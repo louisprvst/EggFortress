@@ -1,3 +1,5 @@
+from egg-fortress.entities.Egg import Egg
+
 class Units() :
 
     # Constructeur par défaut
@@ -17,9 +19,9 @@ class Units() :
         cible.perteHp(self.damage)
 
     # Méthode d'attaque des oeufs
-    def attackEgg(self) :
-        pass
-
+    def attackEgg(self , cible : "Egg") :
+        cible.setLifePoints(cible.getLifePoints() - self.damage)
+        
     ############################### Setters ###############################
 
     # Permet de soustraire des HP a l'unité 
