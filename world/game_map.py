@@ -85,8 +85,8 @@ class GameMap:
             # Charger les images des œufs
             egg_dir = os.path.join(assets_dir, "Eggs")
             self.egg_images = {
-                'blue': pygame.image.load(os.path.join(egg_dir, "blue_egg.png")),
-                'red': pygame.image.load(os.path.join(egg_dir, "red_egg.png"))
+                'blue': pygame.image.load(os.path.join(egg_dir, "small_water_egg.png")),
+                'red': pygame.image.load(os.path.join(egg_dir, "small_fire_egg.png"))
             }
             
             for key in self.egg_images:
