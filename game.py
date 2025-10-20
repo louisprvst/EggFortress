@@ -1,5 +1,4 @@
 import pygame
-import random
 from entities import Egg, Dinosaur, Trap, SpawnEgg
 from map_generator import MapGenerator
 from ui import UI
@@ -144,52 +143,27 @@ class Game:
         btn1_x = start_x
         if btn1_x <= mouse_x <= btn1_x + button_width and button_y <= mouse_y <= button_y + button_height:
             cooldown = self.spawn_cooldowns[self.current_player][1]
-            if cooldown > 0:
-                print(f"[Cooldown] {cooldown:.1f}s restantes")
-                return
-            if current_steaks < 40:
-                print(f"[Erreur] Pas assez de steaks! (40 requis, {current_steaks} disponibles)")
-                return
             self.action_mode = 'spawn'
             self.spawn_type = 1
             self.spawn_positions = self.calculate_spawn_positions()
-            print(f"[Spawn] Mode spawn Rapide activé - Cliquez près de votre œuf")
         
         # Bouton Dino 2 (Équilibré)
         elif start_x + button_spacing <= mouse_x <= start_x + button_spacing + button_width and button_y <= mouse_y <= button_y + button_height:
             cooldown = self.spawn_cooldowns[self.current_player][2]
-            if cooldown > 0:
-                print(f"[Cooldown] {cooldown:.1f}s restantes")
-                return
-            if current_steaks < 80:
-                print(f"[Erreur] Pas assez de steaks! (80 requis, {current_steaks} disponibles)")
-                return
             self.action_mode = 'spawn'
             self.spawn_type = 2
             self.spawn_positions = self.calculate_spawn_positions()
-            print(f"[Spawn] Mode spawn Équilibré activé - Cliquez près de votre œuf")
         
         # Bouton Dino 3 (Tank)
         elif start_x + button_spacing * 2 <= mouse_x <= start_x + button_spacing * 2 + button_width and button_y <= mouse_y <= button_y + button_height:
             cooldown = self.spawn_cooldowns[self.current_player][3]
-            if cooldown > 0:
-                print(f"[Cooldown] {cooldown:.1f}s restantes")
-                return
-            if current_steaks < 100:
-                print(f"[Erreur] Pas assez de steaks! (100 requis, {current_steaks} disponibles)")
-                return
             self.action_mode = 'spawn'
             self.spawn_type = 3
             self.spawn_positions = self.calculate_spawn_positions()
-            print(f"[Spawn] Mode spawn Tank activé - Cliquez près de votre œuf")
         
         # Bouton Piège
         elif start_x + button_spacing * 3 <= mouse_x <= start_x + button_spacing * 3 + button_width and button_y <= mouse_y <= button_y + button_height:
-            if current_steaks < 20:
-                print(f"[Erreur] Pas assez de steaks! (20 requis, {current_steaks} disponibles)")
-                return
             self.action_mode = 'trap'
-            print(f"[Piège] Mode piège activé - Cliquez sur une case libre")
         
         # Bouton d'attaque (flottant au-dessus de la barre)
         attack_width = 120
@@ -203,7 +177,6 @@ class Game:
                 self.selected_dinosaur.immobilized_turns == 0 and
                 self.attack_targets):
                 self.action_mode = 'attack_mode'
-                print(f"[Attaque] Mode attaque activé ! Cliquez sur une cible ennemie adjacente.")
     
     def handle_grid_click(self, grid_x, grid_y):
         """Gère les clics sur la grille de jeu"""
@@ -230,10 +203,8 @@ class Game:
                 if tx == grid_x and ty == grid_y:
                     target_found = True
                     if target_type == 'dinosaur':
-                        print(f"Dinosaure attaque dinosaure ! Dégâts: {self.selected_dinosaur.attack_power}")
                         self.attack(self.selected_dinosaur, target_entity)
                     elif target_type == 'egg':
-                        print(f"Dinosaure attaque œuf ! Dégâts: {self.selected_dinosaur.attack_power}")
                         self.attack_egg(self.selected_dinosaur, target_entity)
                     
                     # Marquer le dinosaure comme ayant agi
@@ -241,9 +212,6 @@ class Game:
                     self.clear_selection()
                     self.check_victory()
                     break
-            
-            if not target_found:
-                print("Cible invalide ! Cliquez sur un ennemi adjacent.")
                 
         else:
             # Sélection d'un dinosaure ou attaque
@@ -315,19 +283,16 @@ class Game:
                 if self.player1_steaks >= trap_cost:
                     self.player1_steaks -= trap_cost
                 else:
-                    print("Pas assez de steaks pour placer un piège!")
                     return False
             else:
                 if self.player2_steaks >= trap_cost:
                     self.player2_steaks -= trap_cost
                 else:
-                    print("Pas assez de steaks pour placer un piège!")
                     return False
             
             trap = Trap(x, y, self.current_player)
             self.traps.append(trap)
             self.clear_selection()
-            print(f"🪤 Piège placé en ({x}, {y}) par le joueur {self.current_player}")
             return True
         return False
     
@@ -509,9 +474,7 @@ class Game:
                 
                 # Retirer le piège
                 self.traps.remove(trap)
-                
-                print(f"Le dinosaure du joueur {dinosaur.player} est tombé dans un piège !")
-                print(f"Il ne pourra pas se déplacer pendant 2 tours !")
+
                 return
     
     def is_enemy_at(self, x, y, player):
@@ -543,18 +506,14 @@ class Game:
         """Gère le combat entre deux dinosaures - seul le défenseur prend des dégâts"""
         damage = attacker.attack_power
         defender.take_damage(damage)
-        print(f"{attacker.dino_type} attaque pour {damage} dégâts !")
         
         if defender.health <= 0:
-            print(f"Dinosaure ennemi éliminé !")
             self.dinosaurs.remove(defender)
             # Donner des steaks au joueur qui a tué
             if attacker.player == 1:
                 self.player1_steaks += 20
             else:
                 self.player2_steaks += 20
-        else:
-            print(f"Défenseur a encore {defender.health} HP")
         
         # Pas de riposte - seul le défenseur prend des dégâts !
     
@@ -591,8 +550,7 @@ class Game:
             if dino.player == self.current_player:
                 if dino.immobilized_turns > 0:
                     dino.immobilized_turns -= 1
-                    if dino.immobilized_turns == 0:
-                        print(f"✅ Un dinosaure du joueur {self.current_player} n'est plus immobilisé !")
+
         
         # Afficher un beau pop-up de changement de tour
         player_colors = {1: "Bleu", 2: "Rouge"}
@@ -731,12 +689,10 @@ class Game:
         # Gérer le timer du tour (2 minutes max)
         elapsed_time = (current_time - self.turn_start_time) / 1000.0
         if elapsed_time >= self.turn_time_limit:
-            print(f"Temps écoulé pour le joueur {self.current_player}!")
             self.end_turn()
         
         # Vérifier si on doit terminer le tour automatiquement après spawn/piège
         if self.auto_end_turn_time and current_time >= self.auto_end_turn_time:
-            print(f"Tour terminé automatiquement après spawn/piège!")
             self.end_turn()
         
         # Mettre à jour l'animation de déplacement
@@ -751,7 +707,6 @@ class Game:
                 new_dino = Dinosaur(spawn_egg.x, spawn_egg.y, spawn_egg.player, spawn_egg.dino_type)
                 self.dinosaurs.append(new_dino)
                 spawn_eggs_to_remove.append(i)
-                print(f"Dinosaure de type {spawn_egg.dino_type} a éclos pour le joueur {spawn_egg.player}!")
         
         # Supprimer les œufs éclos (en ordre inverse pour éviter les problèmes d'index)
         for i in reversed(spawn_eggs_to_remove):

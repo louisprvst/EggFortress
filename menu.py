@@ -4,10 +4,10 @@ Menu principal pour Egg Fortress
 """
 
 import pygame
-import sys
 import os
 import math
 import random
+import traceback
 
 class MenuScreen:
     def __init__(self, screen):
@@ -498,7 +498,6 @@ def main():
         
     except Exception as e:
         print(f"Erreur dans le menu: {e}")
-        import traceback
         traceback.print_exc()
         pygame.quit()
         return "quit"
