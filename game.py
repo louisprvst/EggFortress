@@ -573,6 +573,10 @@ class Game:
             self.player1_steaks += 20
         else:
             self.player2_steaks += 20
+
+        # Mettre à jour les œufs de spawn
+        for egg in self.spawn_eggs:
+            egg.on_turn_end()
         
         # Réinitialiser les mouvements des dinosaures du joueur actuel
         for dino in self.dinosaurs:
