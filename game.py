@@ -205,10 +205,10 @@ class Game:
                 if tx == grid_x and ty == grid_y:
                     target_found = True
                     if target_type == 'dinosaur':
-                        print(f"🦕 Dinosaure attaque dinosaure ! Dégâts: {self.selected_dinosaur.attack_power}")
+                        print(f"Dinosaure attaque dinosaure ! Dégâts: {self.selected_dinosaur.attack_power}")
                         self.attack(self.selected_dinosaur, target_entity)
                     elif target_type == 'egg':
-                        print(f"🥚 Dinosaure attaque œuf ! Dégâts: {self.selected_dinosaur.attack_power}")
+                        print(f"Dinosaure attaque œuf ! Dégâts: {self.selected_dinosaur.attack_power}")
                         self.attack_egg(self.selected_dinosaur, target_entity)
                     
                     # Marquer le dinosaure comme ayant agi
@@ -218,7 +218,7 @@ class Game:
                     break
             
             if not target_found:
-                print("❌ Cible invalide ! Cliquez sur un ennemi adjacent.")
+                print("Cible invalide ! Cliquez sur un ennemi adjacent.")
                 
         else:
             # Sélection d'un dinosaure ou attaque
@@ -497,10 +497,10 @@ class Game:
         """Gère le combat entre deux dinosaures - seul le défenseur prend des dégâts"""
         damage = attacker.attack_power
         defender.take_damage(damage)
-        print(f"💥 {attacker.dino_type} attaque pour {damage} dégâts !")
+        print(f"{attacker.dino_type} attaque pour {damage} dégâts !")
         
         if defender.health <= 0:
-            print(f"💀 Dinosaure ennemi éliminé !")
+            print(f"Dinosaure ennemi éliminé !")
             self.dinosaurs.remove(defender)
             # Donner des steaks au joueur qui a tué
             if attacker.player == 1:
@@ -508,7 +508,7 @@ class Game:
             else:
                 self.player2_steaks += 20
         else:
-            print(f"🦕 Défenseur a encore {defender.health} HP")
+            print(f"Défenseur a encore {defender.health} HP")
         
         # Pas de riposte - seul le défenseur prend des dégâts !
     
@@ -547,7 +547,7 @@ class Game:
         new_player_color = player_colors[self.current_player]
         old_player_color = player_colors[old_player]
         
-        popup_text = f"🔄 Tour {self.turn_number}\n✨ Au tour du joueur {new_player_color} !"
+        popup_text = f"Tour {self.turn_number}\nAu tour du joueur {new_player_color} !"
         
         self.show_turn_popup(popup_text)
         
@@ -679,12 +679,12 @@ class Game:
         # Gérer le timer du tour (2 minutes max)
         elapsed_time = (current_time - self.turn_start_time) / 1000.0
         if elapsed_time >= self.turn_time_limit:
-            print(f"⏰ Temps écoulé pour le joueur {self.current_player}!")
+            print(f"Temps écoulé pour le joueur {self.current_player}!")
             self.end_turn()
         
         # Vérifier si on doit terminer le tour automatiquement après spawn/piège
         if self.auto_end_turn_time and current_time >= self.auto_end_turn_time:
-            print(f"🦕 Tour terminé automatiquement après spawn/piège!")
+            print(f"Tour terminé automatiquement après spawn/piège!")
             self.end_turn()
         
         # Mettre à jour l'animation de déplacement
@@ -699,7 +699,7 @@ class Game:
                 new_dino = Dinosaur(spawn_egg.x, spawn_egg.y, spawn_egg.player, spawn_egg.dino_type)
                 self.dinosaurs.append(new_dino)
                 spawn_eggs_to_remove.append(i)
-                print(f"🐣 Dinosaure de type {spawn_egg.dino_type} a éclos pour le joueur {spawn_egg.player}!")
+                print(f"Dinosaure de type {spawn_egg.dino_type} a éclos pour le joueur {spawn_egg.player}!")
         
         # Supprimer les œufs éclos (en ordre inverse pour éviter les problèmes d'index)
         for i in reversed(spawn_eggs_to_remove):

@@ -43,10 +43,10 @@ class UI:
         # Informations du joueur actuel avec style moderne
         if game.current_player == 1:
             player_color_rgb = (100, 150, 255)
-            player_text_display = "🔵 Joueur 1 Bleu"
+            player_text_display = "Joueur 1 Bleu"
         else:
             player_color_rgb = (255, 100, 100)
-            player_text_display = "🔴 Joueur 2 Rouge"
+            player_text_display = "Joueur 2 Rouge"
         
         # Texte du joueur avec ombre
         player_text = self.font.render(player_text_display, True, player_color_rgb)
@@ -55,7 +55,7 @@ class UI:
         self.screen.blit(player_text, (10, screen_height - 90))
         
         # Tour avec icône
-        turn_text = self.small_font.render(f"🎯 Tour: {game.turn_number}", True, (255, 255, 255))
+        turn_text = self.small_font.render(f"Tour: {game.turn_number}", True, (255, 255, 255))
         self.screen.blit(turn_text, (10, screen_height - 55))
         
         # Timer du tour avec couleur dynamique
@@ -72,12 +72,12 @@ class UI:
         else:
             timer_color = (100, 255, 100)  # Vert normal
             
-        timer_text = self.small_font.render(f"⏰ {minutes}:{seconds:02d}", True, timer_color)
+        timer_text = self.small_font.render(f"Temps: {minutes}:{seconds:02d}", True, timer_color)
         self.screen.blit(timer_text, (130, screen_height - 55))
         
         # Steaks du joueur actuel avec icône et style
         steaks = game.player1_steaks if game.current_player == 1 else game.player2_steaks
-        steaks_text = self.small_font.render(f"🥩 Steaks: {steaks}", True, (255, 215, 0))
+        steaks_text = self.small_font.render(f"Steaks: {steaks}", True, (255, 215, 0))
         self.screen.blit(steaks_text, (10, screen_height - 25))
         
         # Boutons avec le nouveau design
@@ -208,7 +208,7 @@ class UI:
             self.screen.blit(name_text, name_rect)
             
             # Coût en steaks avec icône
-            cost_text = self.small_font.render(f"🥩 {costs[i]}", True, text_color)
+            cost_text = self.small_font.render(f"Steaks: {costs[i]}", True, text_color)
             cost_rect = cost_text.get_rect(center=(x + width//2, y + 35))
             self.screen.blit(cost_text, cost_rect)
             
@@ -270,7 +270,7 @@ class UI:
         pygame.draw.rect(self.screen, highlight_color, highlight_rect, border_radius=6)
         
         # Icône de piège (simulée avec texte)
-        trap_text = pygame.font.Font(None, 24).render("⚡", True, text_color)
+        trap_text = pygame.font.Font(None, 24).render("TRAP", True, text_color)
         trap_rect = trap_text.get_rect(center=(x + width//2, y + 20))
         self.screen.blit(trap_text, trap_rect)
         
@@ -280,7 +280,7 @@ class UI:
         self.screen.blit(text, text_rect)
         
         # Coût
-        cost_text = pygame.font.Font(None, 20).render(f"🥩 {trap_cost}", True, text_color)
+        cost_text = pygame.font.Font(None, 20).render(f"Steaks: {trap_cost}", True, text_color)
         cost_rect = cost_text.get_rect(center=(x + width//2, y + 55))
         self.screen.blit(cost_text, cost_rect)
     
@@ -330,7 +330,7 @@ class UI:
         pygame.draw.rect(self.screen, highlight_color, highlight_rect, border_radius=6)
         
         # Icône d'épée (simulée)
-        sword_text = pygame.font.Font(None, 28).render("⚔️", True, text_color)
+        sword_text = pygame.font.Font(None, 28).render("ATK", True, text_color)
         sword_rect = sword_text.get_rect(center=(x + width//2, y + 18))
         self.screen.blit(sword_text, sword_rect)
         

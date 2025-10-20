@@ -34,9 +34,9 @@ class MapGenerator:
                 full_path = os.path.join(asset_path, filename)
                 image = pygame.image.load(full_path)
                 assets[terrain_type] = image
-                print(f"✓ Asset chargé: {terrain_type}")
+                print(f"Asset chargé: {terrain_type}")
             except Exception as e:
-                print(f"⚠️ Impossible de charger {filename}: {e}")
+                print(f"Impossible de charger {filename}: {e}")
                 assets[terrain_type] = None
         
         return assets

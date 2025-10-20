@@ -6,11 +6,11 @@ def main():
     try:
         # Essayer d'importer pygame
         import pygame
-        print("✓ Pygame trouvé et importé avec succès")
+        print("Pygame trouvé et importé avec succès")
     except ImportError:
-        print("❌ ERREUR: pygame n'est pas installé ou accessible")
+        print("ERREUR: pygame n'est pas installé ou accessible")
         print()
-        print("🔧 SOLUTIONS:")
+        print("SOLUTIONS:")
         print("1. Utiliser l'environnement virtuel:")
         print("   /Users/nadirelmoutaouakil/Documents/egg/.venv/bin/python main.py")
         print()
@@ -25,13 +25,13 @@ def main():
     try:
         # Lancer le menu principal
         from menu import MenuManager
-        print("✓ Module de menu importé")
+        print("Module de menu importé")
         
         # Créer et lancer le gestionnaire de menu
         menu_manager = MenuManager()
-        print("✓ EGG FORTRESS - Menu principal lancé!")
+        print("EGG FORTRESS - Menu principal lancé!")
         print()
-        print("🎮 BIENVENUE DANS EGG FORTRESS!")
+        print("BIENVENUE DANS EGG FORTRESS!")
         print("- Utilisez le menu pour naviguer")
         print("- Cliquez sur JOUER pour commencer")
         print("- Consultez PARAMÈTRES pour les règles")
@@ -42,7 +42,7 @@ def main():
         
         if result and result == "start_game":
             # Lancer le jeu principal
-            print("🎮 EGG FORTRESS")
+            print("EGG FORTRESS")
             print("Lancement du jeu en mode 2 joueurs...")
             
             from game import Game
@@ -52,17 +52,17 @@ def main():
             clock = pygame.time.Clock()
             game = Game(screen)
             
-            print("✓ Mode 2 joueurs activé")
-            print("✓ Jeu initialisé depuis le menu!")
+            print("Mode 2 joueurs activé")
+            print("Jeu initialisé depuis le menu!")
             print()
-            print("🎮 CONTRÔLES:")
+            print("CONTRÔLES:")
             print("- Clic gauche: Sélectionner/Déplacer")
             print("- Boutons: Spawner dinosaures/pièges")
             print("- ESPACE: Finir le tour")
             print("- ÉCHAP: Annuler action")
             print("- R: Redémarrer (fin de partie)")
             print()
-            print("🎯 OBJECTIF: Détruisez l'œuf ennemi!")
+            print("OBJECTIF: Détruisez l'œuf ennemi!")
             
             # Boucle principale du jeu
             running = True
@@ -79,18 +79,18 @@ def main():
                 clock.tick(60)
         
         pygame.quit()
-        print("✓ Jeu fermé normalement")
+        print("Jeu fermé normalement")
         
     except Exception as e:
-        print(f"❌ Erreur lors de l'exécution: {e}")
+        print(f"Erreur lors de l'exécution: {e}")
         print()
-        print("🔧 Suggestions:")
+        print("Suggestions:")
         print("1. Vérifiez que tous les fichiers sont présents")
         print("2. Essayez: python test_game.py")
         print("3. Utilisez le mode console: python launcher.py --console")
         
         import traceback
-        print("\n📋 Détails de l'erreur:")
+        print("\nDétails de l'erreur:")
         traceback.print_exc()
         
         try:

@@ -254,27 +254,27 @@ class MenuScreen:
         
         # Règles et contrôles
         rules = [
-            "🎯 OBJECTIF:",
+            "OBJECTIF:",
             "• Détruire l'œuf ennemi tout en protégeant le vôtre",
             "",
-            "🎮 CONTRÔLES:",
+            "CONTRÔLES:",
             "• Clic gauche: Sélectionner/Déplacer dinosaures",
             "• Boutons UI: Spawner dinosaures/pièges", 
             "• ESPACE: Terminer le tour",
             "• ÉCHAP: Annuler l'action",
             "• R: Redémarrer (fin de partie)",
             "",
-            "⚔️ COMBAT:",
+            "COMBAT:",
             "• Bouton ATTAQUE: Apparaît près des ennemis",
             "• Cliquez pour activer le mode attaque",
             "• Sélectionnez votre cible",
             "",
-            "🦕 DINOSAURES:",
+            "DINOSAURES:",
             "• Type 1 (40 steaks): Rapide, fragile",
             "• Type 2 (80 steaks): Équilibré", 
             "• Type 3 (100 steaks): Lent, résistant",
             "",
-            "💰 RESSOURCES:",
+            "RESSOURCES:",
             "• +20 steaks par tour",
             "• +20 steaks par ennemi éliminé"
         ]
@@ -283,7 +283,7 @@ class MenuScreen:
         line_height = 25
         
         for i, rule in enumerate(rules):
-            if rule.startswith("🎯") or rule.startswith("🎮") or rule.startswith("⚔️") or rule.startswith("🦕") or rule.startswith("💰"):
+            if rule in ["OBJECTIF:", "CONTRÔLES:", "COMBAT:", "DINOSAURES:", "RESSOURCES:"]:
                 color = (255, 255, 100)  # Jaune pour les titres
                 font = self.text_font
             elif rule.startswith("•"):
