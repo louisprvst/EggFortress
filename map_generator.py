@@ -53,40 +53,31 @@ class MapGenerator:
         return grid
     
     def generate_beautiful_visual_map(self):
-        """Génère une belle carte visuelle 32x24 avec design simple et épuré - plus de cases"""
+        """Génère une belle carte visuelle avec de l'herbe et quelques arbres à des positions fixes"""
         grid = []
         
-        # Créer une carte simple avec principalement de l'herbe et un chemin de terre central
+        # Créer une carte avec de l'herbe partout
         for y in range(self.visual_height):
             row = []
             for x in range(self.visual_width):
-                # Chemin de terre horizontal au centre (lignes 11-13)
-                if 11 <= y <= 13:
-                    terrain = 'dirt'
-                # Chemin de terre vertical au centre (colonnes 15-17)
-                elif 15 <= x <= 17:
-                    terrain = 'dirt'
-                # Quelques arbres très rares dans les coins (seulement 4 par coin)
-                elif (x <= 2 and y <= 2) or (x >= 29 and y <= 2) or (x <= 2 and y >= 21) or (x >= 29 and y >= 21):
-                    if random.random() < 0.15:  # 15% de chance d'avoir un arbre dans les coins
-                        terrain = 'tree'
-                    else:
-                        terrain = 'grass'
-                # Quelques buissons très rares (dispersés)
-                elif (x == 6 and y == 4) or (x == 25 and y == 4) or (x == 6 and y == 19) or (x == 25 and y == 19) or (x == 10 and y == 8) or (x == 21 and y == 8) or (x == 10 and y == 15) or (x == 21 and y == 15):
-                    terrain = 'bush'
-                # Quelques fleurs très rares (parsemées)
-                elif (x == 4 and y == 7) or (x == 27 and y == 7) or (x == 12 and y == 3) or (x == 19 and y == 3) or (x == 12 and y == 20) or (x == 19 and y == 20) or (x == 8 and y == 18) or (x == 23 and y == 18) or (x == 8 and y == 5) or (x == 23 and y == 5):
-                    if random.random() < 0.7:  # 70% de chance d'avoir une fleur
-                        terrain = random.choice(['flower', 'flower_2'])
-                    else:
-                        terrain = 'grass'
-                # Tout le reste est de l'herbe
-                else:
-                    terrain = 'grass'
-                
-                row.append(terrain)
+                row.append('grass')
             grid.append(row)
+        
+        # Placer 6 arbres à des positions stratégiques fixes
+        # Adapter les positions pour la grille visuelle 32x24 (qui correspond à logique 16x12)
+        # Ratio: 2 cases visuelles = 1 case logique
+        tree_positions = [
+            (4, 4),    # Haut gauche (case logique ~2,2)
+            (27, 4),   # Haut droite (case logique ~13,2)
+            (4, 19),   # Bas gauche (case logique ~2,9)
+            (27, 19),  # Bas droite (case logique ~13,9)
+            (15, 8),   # Centre haut (case logique ~7,4)
+            (15, 15)   # Centre bas (case logique ~7,7)
+        ]
+        
+        for x, y in tree_positions:
+            if 0 <= x < self.visual_width and 0 <= y < self.visual_height:
+                grid[y][x] = 'tree'
         
         return grid
     

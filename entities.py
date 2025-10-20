@@ -10,9 +10,9 @@ class Entity:
         self.player = player  # 1 pour bleu, 2 pour rouge
         self.image = None
     
-    def draw(self, screen, cell_width, cell_height):
+    def draw(self, screen, cell_width, cell_height, offset_x=0, offset_y=0):
         if self.image:
-            screen.blit(self.image, (self.x * cell_width, self.y * cell_height))
+            screen.blit(self.image, (offset_x + self.x * cell_width, offset_y + self.y * cell_height))
 
 class Egg(Entity):
     def __init__(self, x, y, player):
@@ -60,14 +60,14 @@ class Egg(Entity):
             self.image = pygame.Surface((60, 75))
             self.image.fill((100, 100, 100))
     
-    def draw(self, screen, cell_width, cell_height):
+    def draw(self, screen, cell_width, cell_height, offset_x=0, offset_y=0):
         """Dessine l'œuf avec sa barre de vie pixel art"""
-        super().draw(screen, cell_width, cell_height)
+        super().draw(screen, cell_width, cell_height, offset_x, offset_y)
         
         # Dessiner la barre de vie avec les assets pixel art
-        self.draw_health_bar_pixelart(screen, cell_width, cell_height)
+        self.draw_health_bar_pixelart(screen, cell_width, cell_height, offset_x, offset_y)
     
-    def draw_health_bar_pixelart(self, screen, cell_width, cell_height):
+    def draw_health_bar_pixelart(self, screen, cell_width, cell_height, offset_x=0, offset_y=0):
         """Dessine la barre de vie avec les images pixel art des assets"""
         health_ratio = self.health / self.max_health
         health_percentage = int(health_ratio * 10) * 10  # Arrondir à la dizaine
@@ -78,8 +78,8 @@ class Egg(Entity):
             health_bar_image = pygame.transform.scale(health_bar_image, (cell_width - 10, 12))
             
             # Position de la barre de vie
-            bar_x = self.x * cell_width + 5
-            bar_y = self.y * cell_height - 18
+            bar_x = offset_x + self.x * cell_width + 5
+            bar_y = offset_y + self.y * cell_height - 18
             
             screen.blit(health_bar_image, (bar_x, bar_y))
             
@@ -87,8 +87,8 @@ class Egg(Entity):
             # Fallback vers l'ancienne méthode si les images ne sont pas trouvées
             bar_width = cell_width - 10
             bar_height = 8
-            bar_x = self.x * cell_width + 5
-            bar_y = self.y * cell_height - 15
+            bar_x = offset_x + self.x * cell_width + 5
+            bar_y = offset_y + self.y * cell_height - 15
             
             # Fond de la barre
             pygame.draw.rect(screen, (100, 100, 100), 
@@ -156,33 +156,33 @@ class Dinosaur(Entity):
         """Le dinosaure prend des dégâts"""
         self.health = max(0, self.health - damage)
     
-    def draw(self, screen, cell_width, cell_height):
+    def draw(self, screen, cell_width, cell_height, offset_x=0, offset_y=0):
         """Dessine le dinosaure avec sa barre de vie pixel art"""
-        super().draw(screen, cell_width, cell_height)
+        super().draw(screen, cell_width, cell_height, offset_x, offset_y)
         
         # Dessiner la barre de vie avec pixel art
-        self.draw_health_bar_pixelart(screen, cell_width, cell_height)
+        self.draw_health_bar_pixelart(screen, cell_width, cell_height, offset_x, offset_y)
         
         # Indicateur de mouvement
         if self.has_moved:
             pygame.draw.circle(screen, (128, 128, 128), 
-                             (self.x * cell_width + cell_width - 10, 
-                              self.y * cell_height + 10), 5)
+                             (offset_x + self.x * cell_width + cell_width - 10, 
+                              offset_y + self.y * cell_height + 10), 5)
         
         # Indicateur d'immobilisation
         if self.immobilized_turns > 0:
             # Dessiner des chaînes ou un effet visuel
             pygame.draw.rect(screen, (255, 0, 0), 
-                           (self.x * cell_width + 5, self.y * cell_height + 5, 
+                           (offset_x + self.x * cell_width + 5, offset_y + self.y * cell_height + 5, 
                             cell_width - 10, cell_height - 10), 3)
             # Afficher le nombre de tours restants
             font = pygame.font.Font(None, 24)
             text = font.render(str(self.immobilized_turns), True, (255, 255, 255))
-            text_rect = text.get_rect(center=(self.x * cell_width + cell_width//2, 
-                                            self.y * cell_height + cell_height//2))
+            text_rect = text.get_rect(center=(offset_x + self.x * cell_width + cell_width//2, 
+                                            offset_y + self.y * cell_height + cell_height//2))
             screen.blit(text, text_rect)
     
-    def draw_health_bar_pixelart(self, screen, cell_width, cell_height):
+    def draw_health_bar_pixelart(self, screen, cell_width, cell_height, offset_x=0, offset_y=0):
         """Dessine la barre de vie avec les images pixel art des assets"""
         health_ratio = self.health / self.max_health
         health_percentage = int(health_ratio * 10) * 10  # Arrondir à la dizaine
@@ -193,8 +193,8 @@ class Dinosaur(Entity):
             health_bar_image = pygame.transform.scale(health_bar_image, (cell_width - 10, 8))
             
             # Position de la barre de vie
-            bar_x = self.x * cell_width + 5
-            bar_y = self.y * cell_height - 15
+            bar_x = offset_x + self.x * cell_width + 5
+            bar_y = offset_y + self.y * cell_height - 15
             
             screen.blit(health_bar_image, (bar_x, bar_y))
             
@@ -202,8 +202,8 @@ class Dinosaur(Entity):
             # Fallback vers l'ancienne méthode
             bar_width = cell_width - 10
             bar_height = 6
-            bar_x = self.x * cell_width + 5
-            bar_y = self.y * cell_height - 12
+            bar_x = offset_x + self.x * cell_width + 5
+            bar_y = offset_y + self.y * cell_height - 12
             
             # Fond de la barre
             pygame.draw.rect(screen, (100, 100, 100), 
@@ -265,20 +265,20 @@ class SpawnEgg(Entity):
         """Vérifie si l'œuf est prêt à éclore (animation terminée)"""
         return self.is_hatching and self.hatch_animation_time >= 0.5
     
-    def draw(self, screen, cell_width, cell_height):
+    def draw(self, screen, cell_width, cell_height, offset_x=0, offset_y=0):
         """Dessine l'œuf de spawn avec animations"""
-        center_x = self.x * cell_width + cell_width // 2
-        center_y = self.y * cell_height + cell_height // 2
+        center_x = offset_x + self.x * cell_width + cell_width // 2
+        center_y = offset_y + self.y * cell_height + cell_height // 2
         
         if not self.is_hatching:
             # Dessiner l'œuf normal avec barre de progression
-            super().draw(screen, cell_width, cell_height)
+            super().draw(screen, cell_width, cell_height, offset_x, offset_y)
             
             # Barre de progression du spawn
             progress_width = cell_width - 10
             progress_height = 4
-            progress_x = self.x * cell_width + 5
-            progress_y = self.y * cell_height + cell_height - 8
+            progress_x = offset_x + self.x * cell_width + 5
+            progress_y = offset_y + self.y * cell_height + cell_height - 8
             
             # Fond de la barre
             pygame.draw.rect(screen, (100, 100, 100), 
@@ -335,7 +335,7 @@ class Trap(Entity):
             self.base_image = pygame.Surface((60, 60))
             self.base_image.fill((139, 69, 19))  # Marron
     
-    def draw(self, screen, cell_width, cell_height, current_player):
+    def draw(self, screen, cell_width, cell_height, current_player, offset_x=0, offset_y=0):
         """Dessine le piège seulement pour le joueur qui l'a placé"""
         # Le piège n'est visible que pour le joueur qui l'a placé
         if self.player == current_player and not self.activated:
@@ -346,4 +346,4 @@ class Trap(Entity):
                 self.image = pygame.transform.scale(self.base_image, (cell_width, cell_height))
             
             # Dessiner le piège
-            screen.blit(self.image, (self.x * cell_width, self.y * cell_height))
+            screen.blit(self.image, (offset_x + self.x * cell_width, offset_y + self.y * cell_height))

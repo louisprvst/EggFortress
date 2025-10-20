@@ -31,17 +31,38 @@ class Game:
         self.grid = self.map_generator.generate_map()  # Grille logique pour le gameplay
         self.visual_base, self.visual_elements = self.map_generator.generate_visual_map()  # Grilles visuelles en couches
         
-        # Grilles : logique vs visuelle (plus de cases pour plus de détails)
-        self.logic_width = 16  # Plus de cases logiques
+        # Grilles : logique (cases carrées pour le gameplay)
+        self.logic_width = 16
         self.logic_height = 12
-        self.visual_width = 32  # Plus de cases visuelles
-        self.visual_height = 24
         
-        # Tailles des cellules (plus petites)
-        self.logic_cell_width = self.screen_width // self.logic_width
-        self.logic_cell_height = (self.screen_height - 120) // self.logic_height
-        self.visual_cell_width = self.screen_width // self.visual_width
-        self.visual_cell_height = (self.screen_height - 120) // self.visual_height
+        # Calculer la taille des cellules pour qu'elles soient carrées
+        available_height = self.screen_height - 120
+        
+        # Calculer la taille de cellule la plus grande possible tout en restant carrée
+        cell_size_by_width = self.screen_width // self.logic_width
+        cell_size_by_height = available_height // self.logic_height
+        
+        # Prendre la plus petite des deux pour que tout rentre à l'écran
+        self.cell_size = min(cell_size_by_width, cell_size_by_height)
+        
+        # Les cellules logiques sont carrées
+        self.logic_cell_width = self.cell_size
+        self.logic_cell_height = self.cell_size
+        
+        # Les cellules visuelles correspondent exactement aux cellules logiques
+        # (pas de double grille, une seule grille avec des cases carrées)
+        self.visual_cell_width = self.cell_size
+        self.visual_cell_height = self.cell_size
+        
+        # Calculer le nombre de cellules visuelles nécessaires
+        self.visual_width = self.logic_width
+        self.visual_height = self.logic_height
+        
+        # Calculer les offsets pour centrer le plateau
+        self.board_width = self.logic_width * self.cell_size
+        self.board_height = self.logic_height * self.cell_size
+        self.board_offset_x = (self.screen_width - self.board_width) // 2
+        self.board_offset_y = (available_height - self.board_height) // 2
         
         # Garder l'ancienne référence pour compatibilité
         self.cell_width = self.logic_cell_width
@@ -114,11 +135,16 @@ class Game:
                 if mouse_y > self.screen_height - 100:
                     self.handle_ui_click(mouse_x, mouse_y)
                 else:
-                    # Convertir position souris en coordonnées grille
-                    grid_x = mouse_x // self.cell_width
-                    grid_y = mouse_y // self.cell_height
+                    # Ajuster les coordonnées de la souris avec l'offset du plateau
+                    adjusted_x = mouse_x - self.board_offset_x
+                    adjusted_y = mouse_y - self.board_offset_y
                     
-                    if 0 <= grid_x < 20 and 0 <= grid_y < 15:
+                    # Convertir position souris en coordonnées grille
+                    grid_x = adjusted_x // self.cell_width
+                    grid_y = adjusted_y // self.cell_height
+                    
+                    # Vérifier que le clic est bien dans les limites du plateau
+                    if 0 <= grid_x < self.logic_width and 0 <= grid_y < self.logic_height:
                         self.handle_grid_click(grid_x, grid_y)
         
         elif event.type == pygame.KEYDOWN:
@@ -657,8 +683,33 @@ class Game:
         """Annule l'action en cours"""
         self.clear_selection()
     
+    def has_tree_at(self, x, y):
+        """Vérifie s'il y a un arbre à cette position logique"""
+        # Convertir les coordonnées logiques en coordonnées visuelles
+        # Chaque case logique correspond à visual_width/logic_width cases visuelles
+        visual_per_logic_x = self.visual_width / self.logic_width
+        visual_per_logic_y = self.visual_height / self.logic_height
+        
+        # Vérifier toutes les cases visuelles correspondant à cette case logique
+        visual_x_start = int(x * visual_per_logic_x)
+        visual_x_end = int((x + 1) * visual_per_logic_x)
+        visual_y_start = int(y * visual_per_logic_y)
+        visual_y_end = int((y + 1) * visual_per_logic_y)
+        
+        # S'il y a un arbre dans n'importe quelle case visuelle de cette zone, la case est bloquée
+        for vy in range(visual_y_start, visual_y_end):
+            for vx in range(visual_x_start, visual_x_end):
+                if vy < len(self.visual_elements) and vx < len(self.visual_elements[vy]):
+                    if self.visual_elements[vy][vx] == 'tree':
+                        return True
+        return False
+    
     def is_cell_free(self, x, y):
         """Vérifie si une case est libre"""
+        # Vérifier s'il y a un arbre
+        if self.has_tree_at(x, y):
+            return False
+        
         # Vérifier les œufs
         for egg in self.eggs.values():
             if egg.x == x and egg.y == y:
@@ -689,6 +740,10 @@ class Game:
     
     def can_move_to(self, dinosaur, x, y):
         """Vérifie si un dinosaure peut se déplacer vers une position"""
+        # Vérifier qu'il n'y a pas d'arbre
+        if self.has_tree_at(x, y):
+            return False
+        
         distance = abs(dinosaur.x - x) + abs(dinosaur.y - y)
         return distance <= dinosaur.movement_range
     
@@ -796,53 +851,62 @@ class Game:
             self.draw_turn_popup()
     
     def draw_grid(self):
-        """Dessine la grille de jeu avec les assets de terrain en couches"""
-        # Couche 1 : Dessiner la base (herbe et terre)
-        for y in range(self.visual_height):
-            for x in range(self.visual_width):
+        """Dessine la grille de jeu avec des cases carrées et des textures complètes"""
+        # Dessiner chaque case avec sa texture
+        for y in range(self.logic_height):
+            for x in range(self.logic_width):
+                # Position de la case (avec offset pour centrer)
+                cell_x = self.board_offset_x + x * self.cell_size
+                cell_y = self.board_offset_y + y * self.cell_size
+                
+                # Récupérer le terrain de base
                 if y < len(self.visual_base) and x < len(self.visual_base[y]):
                     base_terrain = self.visual_base[y][x]
                     base_image = self.map_generator.get_terrain_image(base_terrain)
                     
                     if base_image:
-                        scaled_image = pygame.transform.scale(base_image, 
-                                                            (self.visual_cell_width, self.visual_cell_height))
-                        rect = pygame.Rect(x * self.visual_cell_width, y * self.visual_cell_height, 
-                                         self.visual_cell_width, self.visual_cell_height)
-                        self.screen.blit(scaled_image, rect)
+                        # Redimensionner pour remplir toute la case carrée
+                        scaled_image = pygame.transform.scale(base_image, (self.cell_size, self.cell_size))
+                        self.screen.blit(scaled_image, (cell_x, cell_y))
                     else:
-                        # Fallback pour la base
+                        # Fallback avec couleur unie
                         color = self.get_terrain_color(base_terrain)
-                        rect = pygame.Rect(x * self.visual_cell_width, y * self.visual_cell_height, 
-                                         self.visual_cell_width, self.visual_cell_height)
-                        pygame.draw.rect(self.screen, color, rect)
-        
-        # Couche 2 : Dessiner les éléments par-dessus (arbres, fleurs, buissons)
-        for y in range(self.visual_height):
-            for x in range(self.visual_width):
+                        pygame.draw.rect(self.screen, color, 
+                                       (cell_x, cell_y, self.cell_size, self.cell_size))
+                
+                # Dessiner les éléments par-dessus (arbres, fleurs, etc.)
                 if y < len(self.visual_elements) and x < len(self.visual_elements[y]):
                     element_terrain = self.visual_elements[y][x]
                     
-                    if element_terrain:  # Seulement si il y a un élément
+                    if element_terrain:
                         element_image = self.map_generator.get_terrain_image(element_terrain)
                         
                         if element_image:
                             scaled_image = pygame.transform.scale(element_image, 
-                                                                (self.visual_cell_width, self.visual_cell_height))
-                            rect = pygame.Rect(x * self.visual_cell_width, y * self.visual_cell_height, 
-                                             self.visual_cell_width, self.visual_cell_height)
-                            self.screen.blit(scaled_image, rect)
+                                                                (self.cell_size, self.cell_size))
+                            self.screen.blit(scaled_image, (cell_x, cell_y))
+                
+                # Effet damier subtil pour la lisibilité
+                if (x + y) % 2 == 0:
+                    overlay = pygame.Surface((self.cell_size, self.cell_size))
+                    overlay.set_alpha(15)
+                    overlay.fill((255, 255, 255))
+                    self.screen.blit(overlay, (cell_x, cell_y))
+                
+                # Bordure de case
+                pygame.draw.rect(self.screen, (80, 80, 80), 
+                               (cell_x, cell_y, self.cell_size, self.cell_size), 2)
         
-        # Dessiner les lignes de grille logique (pour le gameplay) - plus visibles
+        # Dessiner les lignes de grille principales pour plus de clarté
         for x in range(self.logic_width + 1):
-            pygame.draw.line(self.screen, (120, 120, 120), 
-                           (x * self.logic_cell_width, 0), 
-                           (x * self.logic_cell_width, self.screen_height - 100), 2)
+            pygame.draw.line(self.screen, (40, 40, 40), 
+                           (self.board_offset_x + x * self.cell_size, self.board_offset_y), 
+                           (self.board_offset_x + x * self.cell_size, self.board_offset_y + self.board_height), 3)
         
         for y in range(self.logic_height + 1):
-            pygame.draw.line(self.screen, (120, 120, 120), 
-                           (0, y * self.logic_cell_height), 
-                           (self.screen_width, y * self.logic_cell_height), 2)
+            pygame.draw.line(self.screen, (40, 40, 40), 
+                           (self.board_offset_x, self.board_offset_y + y * self.cell_size), 
+                           (self.board_offset_x + self.board_width, self.board_offset_y + y * self.cell_size), 3)
     
     def get_terrain_color(self, terrain_type):
         """Retourne une couleur de fallback pour chaque type de terrain"""
@@ -862,63 +926,68 @@ class Game:
         """Dessine toutes les entités du jeu"""
         # Dessiner les œufs
         for egg in self.eggs.values():
-            egg.draw(self.screen, self.cell_width, self.cell_height)
+            egg.draw(self.screen, self.cell_width, self.cell_height, self.board_offset_x, self.board_offset_y)
         
         # Dessiner les pièges (seulement visibles pour le joueur qui les a placés)
         for trap in self.traps:
-            trap.draw(self.screen, self.cell_width, self.cell_height, self.current_player)
+            trap.draw(self.screen, self.cell_width, self.cell_height, self.current_player, self.board_offset_x, self.board_offset_y)
         
         # Dessiner les œufs de spawn
         for spawn_egg in self.spawn_eggs:
-            spawn_egg.draw(self.screen, self.cell_width, self.cell_height)
+            spawn_egg.draw(self.screen, self.cell_width, self.cell_height, self.board_offset_x, self.board_offset_y)
         
         # Dessiner les dinosaures
         for dinosaur in self.dinosaurs:
             if self.move_animation['active'] and dinosaur == self.move_animation['dinosaur']:
                 # Dessiner le dinosaure à sa position animée
-                anim_x = self.move_animation['current_pos'][0] * self.cell_width
-                anim_y = self.move_animation['current_pos'][1] * self.cell_height
+                anim_x = self.board_offset_x + self.move_animation['current_pos'][0] * self.cell_width
+                anim_y = self.board_offset_y + self.move_animation['current_pos'][1] * self.cell_height
                 if dinosaur.image:
                     self.screen.blit(dinosaur.image, (anim_x, anim_y))
             else:
                 # Dessiner normalement
-                dinosaur.draw(self.screen, self.cell_width, self.cell_height)
+                dinosaur.draw(self.screen, self.cell_width, self.cell_height, self.board_offset_x, self.board_offset_y)
     
     def draw_selection(self):
         """Dessine la sélection actuelle"""
         if self.selected_cell:
             x, y = self.selected_cell
-            rect = pygame.Rect(x * self.cell_width, y * self.cell_height, 
+            rect = pygame.Rect(self.board_offset_x + x * self.cell_width, 
+                             self.board_offset_y + y * self.cell_height, 
                              self.cell_width, self.cell_height)
             pygame.draw.rect(self.screen, (255, 255, 0), rect, 3)
     
     def draw_possible_moves(self):
         """Dessine les cases où le dinosaure peut se déplacer en bleu"""
         for x, y in self.possible_moves:
-            rect = pygame.Rect(x * self.cell_width, y * self.cell_height, 
+            rect = pygame.Rect(self.board_offset_x + x * self.cell_width, 
+                             self.board_offset_y + y * self.cell_height, 
                              self.cell_width, self.cell_height)
             # Surface semi-transparente bleue
             s = pygame.Surface((self.cell_width, self.cell_height))
             s.set_alpha(128)
             s.fill((0, 100, 255))
-            self.screen.blit(s, (x * self.cell_width, y * self.cell_height))
+            self.screen.blit(s, (self.board_offset_x + x * self.cell_width, 
+                               self.board_offset_y + y * self.cell_height))
             pygame.draw.rect(self.screen, (0, 150, 255), rect, 2)
     
     def draw_attack_targets(self):
         """Dessine les cibles d'attaque possibles en rouge"""
         for target_type, x, y, target_entity in self.attack_targets:
-            rect = pygame.Rect(x * self.cell_width, y * self.cell_height, 
+            rect = pygame.Rect(self.board_offset_x + x * self.cell_width, 
+                             self.board_offset_y + y * self.cell_height, 
                              self.cell_width, self.cell_height)
             # Surface semi-transparente rouge pour les attaques
             s = pygame.Surface((self.cell_width, self.cell_height))
             s.set_alpha(150)
             s.fill((255, 50, 50))
-            self.screen.blit(s, (x * self.cell_width, y * self.cell_height))
+            self.screen.blit(s, (self.board_offset_x + x * self.cell_width, 
+                               self.board_offset_y + y * self.cell_height))
             pygame.draw.rect(self.screen, (255, 100, 100), rect, 3)
             
             # Dessiner une croix pour indiquer l'attaque
-            center_x = x * self.cell_width + self.cell_width // 2
-            center_y = y * self.cell_height + self.cell_height // 2
+            center_x = self.board_offset_x + x * self.cell_width + self.cell_width // 2
+            center_y = self.board_offset_y + y * self.cell_height + self.cell_height // 2
             size = 10
             pygame.draw.line(self.screen, (255, 255, 255), 
                            (center_x - size, center_y - size), 
@@ -930,13 +999,15 @@ class Game:
     def draw_spawn_positions(self):
         """Dessine les positions de spawn possibles en bleu"""
         for x, y in self.spawn_positions:
-            rect = pygame.Rect(x * self.cell_width, y * self.cell_height, 
+            rect = pygame.Rect(self.board_offset_x + x * self.cell_width, 
+                             self.board_offset_y + y * self.cell_height, 
                              self.cell_width, self.cell_height)
             # Surface semi-transparente bleue
             s = pygame.Surface((self.cell_width, self.cell_height))
             s.set_alpha(100)
             s.fill((0, 255, 100))
-            self.screen.blit(s, (x * self.cell_width, y * self.cell_height))
+            self.screen.blit(s, (self.board_offset_x + x * self.cell_width, 
+                               self.board_offset_y + y * self.cell_height))
             pygame.draw.rect(self.screen, (0, 255, 150), rect, 2)
     
     def draw_turn_popup(self):
