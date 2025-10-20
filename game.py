@@ -275,9 +275,25 @@ class Game:
     def place_trap(self, x, y):
         """Place un piège à la position donnée"""
         if self.is_cell_free(x, y):
+            # Coût du piège (ajustez selon vos besoins)
+            trap_cost = 30
+            if self.current_player == 1:
+                if self.player1_steaks >= trap_cost:
+                    self.player1_steaks -= trap_cost
+                else:
+                    print("Pas assez de steaks pour placer un piège!")
+                    return False
+            else:
+                if self.player2_steaks >= trap_cost:
+                    self.player2_steaks -= trap_cost
+                else:
+                    print("Pas assez de steaks pour placer un piège!")
+                    return False
+            
             trap = Trap(x, y, self.current_player)
             self.traps.append(trap)
             self.clear_selection()
+            print(f"🪤 Piège placé en ({x}, {y}) par le joueur {self.current_player}")
             return True
         return False
     
@@ -437,27 +453,32 @@ class Game:
         dinosaur.y = target_y
         dinosaur.has_moved = True
         
-        # Vérifier les combats et pièges
-        self.check_combat_and_traps(dinosaur, old_x, old_y)
+        # Vérifier les pièges ennemis
+        self.check_traps(dinosaur)
         
         # Réinitialiser l'animation
         self.move_animation['active'] = False
         self.clear_selection()
     
-    def check_combat_and_traps(self, dinosaur, old_x, old_y):
-        """Vérifie seulement les pièges après déplacement (combat manuel uniquement)"""
-        # Vérifier les pièges
+    def check_traps(self, dinosaur):
+        """Vérifie si le dinosaure marche sur un piège ennemi"""
         for trap in self.traps[:]:
-            if trap.x == dinosaur.x and trap.y == dinosaur.y and trap.player != dinosaur.player:
-                dinosaur.take_damage(50)
-                dinosaur.immobilized_turns = 2  # Immobilisé pendant 2 tours
+            # Le dinosaure marche sur un piège de l'adversaire
+            if (trap.x == dinosaur.x and trap.y == dinosaur.y and 
+                trap.player != dinosaur.player and not trap.activated):
+                
+                # Activer le piège
+                trap.activated = True
+                
+                # Le dinosaure sera immobilisé pendant 2 tours
+                dinosaur.immobilized_turns = 2
+                
+                # Retirer le piège
                 self.traps.remove(trap)
-                print(f"🪤 Dinosaure pris au piège ! Immobilisé pendant 2 tours !")
-                if dinosaur.health <= 0:
-                    self.dinosaurs.remove(dinosaur)
-                    return
-        
-        # Combat seulement via le bouton d'attaque - pas automatique !
+                
+                print(f"Le dinosaure du joueur {dinosaur.player} est tombé dans un piège !")
+                print(f"Il ne pourra pas se déplacer pendant 2 tours !")
+                return
     
     def is_enemy_at(self, x, y, player):
         """Vérifie s'il y a un ennemi à cette position"""
@@ -519,19 +540,25 @@ class Game:
         else:
             self.player2_steaks += 20
         
-        # Réinitialiser les mouvements des dinosaures et gérer l'immobilisation
+        # Réinitialiser les mouvements des dinosaures du joueur actuel
         for dino in self.dinosaurs:
             if dino.player == self.current_player:
                 dino.has_moved = False
-                # Réduire l'immobilisation de tous les dinosaures du joueur actuel
-                if dino.immobilized_turns > 0:
-                    dino.immobilized_turns -= 1
         
         # Changer de joueur
         old_player = self.current_player
         self.current_player = 2 if self.current_player == 1 else 1
         if self.current_player == 1:
             self.turn_number += 1
+        
+        # Réduire l'immobilisation des dinosaures du NOUVEAU joueur actuel
+        # (ceux qui vont jouer maintenant)
+        for dino in self.dinosaurs:
+            if dino.player == self.current_player:
+                if dino.immobilized_turns > 0:
+                    dino.immobilized_turns -= 1
+                    if dino.immobilized_turns == 0:
+                        print(f"✅ Un dinosaure du joueur {self.current_player} n'est plus immobilisé !")
         
         # Afficher un beau pop-up de changement de tour
         player_colors = {1: "Bleu", 2: "Rouge"}
@@ -803,9 +830,9 @@ class Game:
         for egg in self.eggs.values():
             egg.draw(self.screen, self.cell_width, self.cell_height)
         
-        # Dessiner les pièges
+        # Dessiner les pièges (seulement visibles pour le joueur qui les a placés)
         for trap in self.traps:
-            trap.draw(self.screen, self.cell_width, self.cell_height)
+            trap.draw(self.screen, self.cell_width, self.cell_height, self.current_player)
         
         # Dessiner les œufs de spawn
         for spawn_egg in self.spawn_eggs:

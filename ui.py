@@ -109,12 +109,6 @@ class UI:
                 self.screen.blit(bg_surface, bg_rect)
                 self.screen.blit(msg_text, msg_rect)
         
-        # Dessiner les cooldowns au-dessus des œufs
-        self.draw_cooldowns(game)
-        current_steaks = game.player1_steaks if game.current_player == 1 else game.player2_steaks
-        steaks_text = self.small_font.render(f"Steaks: {current_steaks}", True, (255, 255, 255))
-        self.screen.blit(steaks_text, (10, screen_height - 30))
-        
         # Boutons pour spawner des dinosaures
         self.draw_spawn_buttons(game, screen_height)
         
