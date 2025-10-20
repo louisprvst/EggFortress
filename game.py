@@ -129,47 +129,81 @@ class Game:
     
     def handle_ui_click(self, mouse_x, mouse_y):
         """Gère les clics sur l'interface utilisateur"""
-        # Boutons pour spawn des dinosaures
-        button_y = self.screen_height - 80
+        # Nouvelle disposition UI : boutons centrés
+        # Calculer les positions des boutons (correspond à la nouvelle UI)
+        button_spacing = 125
+        total_width = button_spacing * 4  # 3 dinos + 1 piège
+        start_x = (self.screen_width - total_width) // 2 + 50
+        button_y = self.screen_height - 140 + 20  # ui_height = 140, offset = 20
+        button_width = 110
+        button_height = 95
         
-        if 200 <= mouse_x <= 300 and button_y <= mouse_y <= button_y + 60:
-            # Vérifier le cooldown pour dino type 1
+        current_steaks = self.player1_steaks if self.current_player == 1 else self.player2_steaks
+        
+        # Bouton Dino 1 (Rapide)
+        btn1_x = start_x
+        if btn1_x <= mouse_x <= btn1_x + button_width and button_y <= mouse_y <= button_y + button_height:
             cooldown = self.spawn_cooldowns[self.current_player][1]
             if cooldown > 0:
-                print(f"Cooldown actif: {cooldown} secondes restantes")
+                print(f"[Cooldown] {cooldown:.1f}s restantes")
+                return
+            if current_steaks < 40:
+                print(f"[Erreur] Pas assez de steaks! (40 requis, {current_steaks} disponibles)")
                 return
             self.action_mode = 'spawn'
             self.spawn_type = 1
             self.spawn_positions = self.calculate_spawn_positions()
-        elif 310 <= mouse_x <= 410 and button_y <= mouse_y <= button_y + 60:
-            # Vérifier le cooldown pour dino type 2
+            print(f"[Spawn] Mode spawn Rapide activé - Cliquez près de votre œuf")
+        
+        # Bouton Dino 2 (Équilibré)
+        elif start_x + button_spacing <= mouse_x <= start_x + button_spacing + button_width and button_y <= mouse_y <= button_y + button_height:
             cooldown = self.spawn_cooldowns[self.current_player][2]
             if cooldown > 0:
-                print(f"Cooldown actif: {cooldown} secondes restantes")
+                print(f"[Cooldown] {cooldown:.1f}s restantes")
+                return
+            if current_steaks < 80:
+                print(f"[Erreur] Pas assez de steaks! (80 requis, {current_steaks} disponibles)")
                 return
             self.action_mode = 'spawn'
             self.spawn_type = 2
             self.spawn_positions = self.calculate_spawn_positions()
-        elif 420 <= mouse_x <= 520 and button_y <= mouse_y <= button_y + 60:
-            # Vérifier le cooldown pour dino type 3
+            print(f"[Spawn] Mode spawn Équilibré activé - Cliquez près de votre œuf")
+        
+        # Bouton Dino 3 (Tank)
+        elif start_x + button_spacing * 2 <= mouse_x <= start_x + button_spacing * 2 + button_width and button_y <= mouse_y <= button_y + button_height:
             cooldown = self.spawn_cooldowns[self.current_player][3]
             if cooldown > 0:
-                print(f"Cooldown actif: {cooldown} secondes restantes")
+                print(f"[Cooldown] {cooldown:.1f}s restantes")
+                return
+            if current_steaks < 100:
+                print(f"[Erreur] Pas assez de steaks! (100 requis, {current_steaks} disponibles)")
                 return
             self.action_mode = 'spawn'
             self.spawn_type = 3
             self.spawn_positions = self.calculate_spawn_positions()
-        elif 550 <= mouse_x <= 650 and button_y <= mouse_y <= button_y + 60:
+            print(f"[Spawn] Mode spawn Tank activé - Cliquez près de votre œuf")
+        
+        # Bouton Piège
+        elif start_x + button_spacing * 3 <= mouse_x <= start_x + button_spacing * 3 + button_width and button_y <= mouse_y <= button_y + button_height:
+            if current_steaks < 20:
+                print(f"[Erreur] Pas assez de steaks! (20 requis, {current_steaks} disponibles)")
+                return
             self.action_mode = 'trap'
-        elif 670 <= mouse_x <= 770 and button_y <= mouse_y <= button_y + 60:
-            # Bouton d'attaque
+            print(f"[Piège] Mode piège activé - Cliquez sur une case libre")
+        
+        # Bouton d'attaque (flottant au-dessus de la barre)
+        attack_width = 120
+        attack_height = 60
+        attack_x = (self.screen_width - attack_width) // 2
+        attack_y = self.screen_height - 140 - attack_height - 20
+        if attack_x <= mouse_x <= attack_x + attack_width and attack_y <= mouse_y <= attack_y + attack_height:
             if (self.selected_dinosaur and 
                 self.selected_dinosaur.player == self.current_player and 
                 not self.selected_dinosaur.has_moved and 
                 self.selected_dinosaur.immobilized_turns == 0 and
                 self.attack_targets):
                 self.action_mode = 'attack_mode'
-                print(f"🎯 Mode attaque activé ! Cliquez sur une cible ennemi adjacente.")
+                print(f"[Attaque] Mode attaque activé ! Cliquez sur une cible ennemie adjacente.")
     
     def handle_grid_click(self, grid_x, grid_y):
         """Gère les clics sur la grille de jeu"""
