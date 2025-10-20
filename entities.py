@@ -314,14 +314,29 @@ class SpawnEgg(Entity):
 class Trap(Entity):
     def __init__(self, x, y, player):
         super().__init__(x, y, player)
+        self.activated = False  # Pour savoir si le piège a déjà été activé
+        self.cell_width = None
+        self.cell_height = None
         self.load_image()
     
     def load_image(self):
-        """Charge l'image du piège"""
+        """Charge l'image du piège - sera redimensionnée lors du dessin"""
         try:
-            self.image = pygame.image.load("assets/images/Traps/trap.png")
-            self.image = pygame.transform.scale(self.image, (30, 30))
+            self.base_image = pygame.image.load("assets/images/Traps/trap.png")
         except:
             # Image de secours
-            self.image = pygame.Surface((30, 30))
-            self.image.fill((139, 69, 19))  # Marron
+            self.base_image = pygame.Surface((60, 60))
+            self.base_image.fill((139, 69, 19))  # Marron
+    
+    def draw(self, screen, cell_width, cell_height, current_player):
+        """Dessine le piège seulement pour le joueur qui l'a placé"""
+        # Le piège n'est visible que pour le joueur qui l'a placé
+        if self.player == current_player and not self.activated:
+            # Redimensionner l'image pour qu'elle prenne toute la case
+            if self.cell_width != cell_width or self.cell_height != cell_height:
+                self.cell_width = cell_width
+                self.cell_height = cell_height
+                self.image = pygame.transform.scale(self.base_image, (cell_width, cell_height))
+            
+            # Dessiner le piège
+            screen.blit(self.image, (self.x * cell_width, self.y * cell_height))
