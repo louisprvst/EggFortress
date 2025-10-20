@@ -265,23 +265,27 @@ class SpawnEgg(Entity):
         return self.turns_left == 0 and self.hatch_animation_time >= 0.5
     
     def draw(self, screen, cell_width, cell_height, offset_x=0, offset_y=0):
-        """Dessine l'œuf de spawn avec animations"""
+        """Dessine l'œuf de spawn avec le nombre de tours restants"""
+        # Calculer le centre de la cellule
         center_x = offset_x + self.x * cell_width + cell_width // 2
         center_y = offset_y + self.y * cell_height + cell_height // 2
         
         if not self.is_hatching:
-            # Dessiner l'œuf normal avec indication du nombre de tours
-            super().draw(screen, cell_width, cell_height)
+            # Dessiner l'œuf à la position correcte
+            image_rect = self.image.get_rect(center=(center_x, center_y))
+            screen.blit(self.image, image_rect)
             
-            # Afficher le nombre de tours restants
+            # Afficher le nombre de tours restants au même endroit
             font = pygame.font.Font(None, 24)
             text = font.render(f"{self.turns_left}", True, (255, 255, 255))
             text_rect = text.get_rect(center=(center_x, center_y))
+            
             # Ombre du texte
             shadow = font.render(f"{self.turns_left}", True, (0, 0, 0))
-            screen.blit(shadow, (text_rect.x + 2, text_rect.y + 2))
-            screen.blit(text, text_rect)
+            shadow_rect = shadow.get_rect(center=(center_x + 2, center_y + 2))
             
+            screen.blit(shadow, shadow_rect)
+            screen.blit(text, text_rect)
         else:
             # Animation d'éclosion
             shake_intensity = 5
