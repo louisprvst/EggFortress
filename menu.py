@@ -447,7 +447,7 @@ class MenuManager:
         # Configuration de l'écran
         self.screen_width = 1200
         self.screen_height = 800
-        self.screen = pygame.display.set_mode((self.screen_width, self.screen_height))
+        self.screen = pygame.display.set_mode((0,0), pygame.FULLSCREEN)
         pygame.display.set_caption("Egg Fortress")
         
         # Menu
