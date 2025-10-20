@@ -46,9 +46,6 @@ class UI:
         
         # === OVERLAYS ET MESSAGES ===
         self._draw_overlays(game, screen_width, screen_height)
-        
-        # Dessiner les cooldowns au-dessus des œufs
-        self.draw_cooldowns(game)
     
     def _draw_ui_background(self, ui_y, ui_height, screen_width, screen_height):
         """Dessine le fond moderne de l'UI avec gradient et effets"""
@@ -249,36 +246,6 @@ class UI:
         # Progression (0 à 1)
         progress = 1 - (cooldown / max_cooldown)
         
-        # Message si le tour va se terminer automatiquement
-        if game.spawn_action_done and game.auto_end_turn_time:
-            remaining = max(0, (game.auto_end_turn_time - pygame.time.get_ticks()) / 1000.0)
-            if remaining > 0:
-                msg_text = self.small_font.render("Tour terminé dans {:.1f}s...".format(remaining), True, (255, 255, 0))
-                msg_rect = msg_text.get_rect(center=(screen_width//2, 30))
-                # Fond semi-transparent
-                bg_rect = msg_rect.copy()
-                bg_rect.inflate(20, 10)
-                bg_surface = pygame.Surface((bg_rect.width, bg_rect.height))
-                bg_surface.set_alpha(180)
-                bg_surface.fill((0, 0, 0))
-                self.screen.blit(bg_surface, bg_rect)
-                self.screen.blit(msg_text, msg_rect)
-    
-    def draw_spawn_buttons(self, game, screen_height):
-        """Dessine les boutons pour spawner des dinosaures avec un design moderne"""
-        current_steaks = game.player1_steaks if game.current_player == 1 else game.player2_steaks
-        costs = [40, 80, 100]
-        names = ["Rapide", "Équilibré", "Tank"]
-        descriptions = ["3 mouv.", "2 mouv.", "1 mouv."]
-        
-        for i in range(3):
-            x = 200 + i * 120
-            y = screen_height - 85
-            width = 110
-            height = 70
-            
-            # Vérifier le cooldown
-            cooldown = game.spawn_cooldowns[game.current_player][i + 1]
         # Cercle de fond
         pygame.draw.circle(self.screen, (40, 40, 50), (center_x, center_y), radius)
         
@@ -566,9 +533,6 @@ class UI:
         self.screen.blit(winner_shadow, winner_shadow_rect)
         self.screen.blit(winner_text, winner_rect)
         
-        restart_text = self.small_font.render("Appuyez sur R pour recommencer", True, (255, 255, 255))
-        restart_rect = restart_text.get_rect(center=(screen_width//2, screen_height//2 + 50))
-        self.screen.blit(restart_text, restart_rect)
         # Instructions pour rejouer
         restart_text = self.medium_font.render("Appuyez sur [R] pour rejouer", True, (200, 200, 220))
         restart_rect = restart_text.get_rect(center=(screen_width//2, panel_y + 200))
@@ -600,37 +564,3 @@ class UI:
     def draw_instructions(self, screen_width, screen_height):
         """Méthode héritée - redirige vers la nouvelle implémentation"""
         pass  # Déjà géré dans _draw_timer_section
-    
-    def draw_cooldowns(self, game):
-        """Dessine les cooldowns au-dessus des œufs"""
-        for player_id, egg in game.eggs.items():
-            cooldowns = game.spawn_cooldowns[player_id]
-            
-            # Position au-dessus de l'œuf
-            x = egg.x * game.cell_width + game.cell_width // 2
-            y = egg.y * game.cell_height - 60
-            
-            # Afficher chaque cooldown actif
-            active_cooldowns = []
-            for dino_type in [1, 2, 3]:
-                cooldown = cooldowns[dino_type]
-                if cooldown > 0:
-                    dino_names = {1: "Petit", 2: "Moyen", 3: "Grand"}
-                    active_cooldowns.append(f"{dino_names[dino_type]}: {int(cooldown)}s")
-            
-            # Dessiner les cooldowns
-            for i, cooldown_text in enumerate(active_cooldowns):
-                color = (255, 100, 100) if player_id == 1 else (100, 100, 255)
-                text_surface = self.small_font.render(cooldown_text, True, color)
-                text_rect = text_surface.get_rect(center=(x, y - i * 20))
-                
-                # Fond semi-transparent
-                bg_rect = text_rect.copy()
-                bg_rect.inflate(10, 4)
-                bg_surface = pygame.Surface((bg_rect.width, bg_rect.height))
-                bg_surface.set_alpha(180)
-                bg_surface.fill((0, 0, 0))
-                self.screen.blit(bg_surface, bg_rect)
-                
-                # Texte
-                self.screen.blit(text_surface, text_rect)
