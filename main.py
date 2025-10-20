@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 import sys
+import os
 import pygame
 from game import Game
+from menu import MenuManager
 import traceback
 
 def main():
