@@ -94,20 +94,11 @@ class Game:
     def init_game(self):
         """Initialise le jeu avec les œufs aux positions de base - version très zoomée"""
         # Position des œufs (coins opposés de la grille 10x8)
-        egg1_pos = (1, 1)  # Coin haut-gauche
-        egg2_pos = (8, 6)  # Coin bas-droite (plus proche)
+        egg1_pos = (1,1)  # Coin haut-gauche
+        egg2_pos = (14,10)  # Coin bas-droite (plus proche)
         
         self.eggs[1] = Egg(egg1_pos[0], egg1_pos[1], 1)  # Joueur 1 (bleu)
         self.eggs[2] = Egg(egg2_pos[0], egg2_pos[1], 2)  # Joueur 2 (rouge)
-        
-        # Ajouter 2 petits dinosaures de départ pour chaque joueur
-        # Joueur 1 (bleu) - près du coin haut-gauche
-        self.dinosaurs.append(Dinosaur(2, 1, 1, 1))  # À droite de l'œuf
-        self.dinosaurs.append(Dinosaur(1, 2, 1, 1))  # En dessous de l'œuf
-        
-        # Joueur 2 (rouge) - près du coin bas-droite
-        self.dinosaurs.append(Dinosaur(7, 6, 2, 1))  # À gauche de l'œuf
-        self.dinosaurs.append(Dinosaur(8, 5, 2, 1))  # Au-dessus de l'œuf
     
     def handle_event(self, event):
         if self.game_over:
