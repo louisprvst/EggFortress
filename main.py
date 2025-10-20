@@ -2,13 +2,12 @@
 import sys
 import os
 import pygame
-
+from game import Game
+from menu import MenuManager
+import traceback
 
 def main():
-    try:
-        # Lancer le menu principal
-        from menu import MenuManager
-        
+    try: 
         # Créer et lancer le gestionnaire de menu
         menu_manager = MenuManager()
         
@@ -16,8 +15,6 @@ def main():
         result = menu_manager.run()
         
         if result and result == "start_game":
-
-            from game import Game
             screen = pygame.display.set_mode((0,0), pygame.FULLSCREEN)
             pygame.display.set_caption("Egg Fortress")
             
@@ -43,7 +40,6 @@ def main():
     except Exception as e:
         print(f"Erreur lors de l'exécution: {e}")
         
-        import traceback
         print("\nDétails de l'erreur:")
         traceback.print_exc()
         

@@ -219,8 +219,15 @@ class SpawnEgg(Entity):
     def __init__(self, x, y, player, dino_type):
         super().__init__(x, y, player)
         self.dino_type = dino_type
-        self.spawn_progress = 0.0
-        self.is_spawning = True  # L'œuf est en cours d'éclosion
+
+        # Définir le nombre de tours nécessaires selon le type
+        # Le nb de tour est celui des deux joueurs 
+        self.spawn_turns = {
+            1: 2,
+            2: 3,
+            3: 4
+        }[dino_type]
+        self.turns_left = self.spawn_turns
         self.is_hatching = False
         self.hatch_animation_time = 0.0
         self.load_image()
@@ -240,30 +247,22 @@ class SpawnEgg(Entity):
     
     def update_spawn(self, delta_time):
         """Met à jour l'animation de spawn"""
-        if not self.is_spawning:
+        if not self.is_hatching:
             return
             
-        # Temps d'éclosion selon le type (en secondes) - comme les cooldowns
-        spawn_speeds = {1: 20.0, 2: 40.0, 3: 80.0}
-        spawn_duration = spawn_speeds.get(self.dino_type, 20.0)
-        
-        # Mettre à jour la progression
-        self.spawn_progress += delta_time / spawn_duration
-        
-        # Vérifier si c'est prêt à éclore
-        if self.spawn_progress >= 1.0:
-            self.spawn_progress = 1.0
-            if not self.is_hatching:
+        # Mettre à jour uniquement l'animation d'éclosion
+        self.hatch_animation_time += delta_time
+
+    def on_turn_end(self):
+        """Appelé à la fin de chaque tour"""
+        if self.turns_left > 0:
+            self.turns_left -= 1
+            if self.turns_left == 0:
                 self.is_hatching = True
-                self.hatch_animation_time = 0.0
-        
-        # Mettre à jour l'animation d'éclosion
-        if self.is_hatching:
-            self.hatch_animation_time += delta_time
     
     def is_ready_to_hatch(self):
-        """Vérifie si l'œuf est prêt à éclore (animation terminée)"""
-        return self.is_hatching and self.hatch_animation_time >= 0.5
+        """Vérifie si l'œuf est prêt à éclore"""
+        return self.turns_left == 0 and self.hatch_animation_time >= 0.5
     
     def draw(self, screen, cell_width, cell_height, offset_x=0, offset_y=0):
         """Dessine l'œuf de spawn avec animations"""
@@ -271,24 +270,18 @@ class SpawnEgg(Entity):
         center_y = offset_y + self.y * cell_height + cell_height // 2
         
         if not self.is_hatching:
-            # Dessiner l'œuf normal avec barre de progression
-            super().draw(screen, cell_width, cell_height, offset_x, offset_y)
+            # Dessiner l'œuf normal avec indication du nombre de tours
+            super().draw(screen, cell_width, cell_height)
             
-            # Barre de progression du spawn
-            progress_width = cell_width - 10
-            progress_height = 4
-            progress_x = offset_x + self.x * cell_width + 5
-            progress_y = offset_y + self.y * cell_height + cell_height - 8
+            # Afficher le nombre de tours restants
+            font = pygame.font.Font(None, 24)
+            text = font.render(f"{self.turns_left}", True, (255, 255, 255))
+            text_rect = text.get_rect(center=(center_x, center_y))
+            # Ombre du texte
+            shadow = font.render(f"{self.turns_left}", True, (0, 0, 0))
+            screen.blit(shadow, (text_rect.x + 2, text_rect.y + 2))
+            screen.blit(text, text_rect)
             
-            # Fond de la barre
-            pygame.draw.rect(screen, (100, 100, 100), 
-                            (progress_x, progress_y, progress_width, progress_height))
-            
-            # Barre de progression
-            filled_width = int(progress_width * self.spawn_progress)
-            color = (0, 255, 0) if self.spawn_progress > 0.8 else (255, 255, 0) if self.spawn_progress > 0.5 else (255, 100, 100)
-            pygame.draw.rect(screen, color, 
-                            (progress_x, progress_y, filled_width, progress_height))
         else:
             # Animation d'éclosion
             shake_intensity = 5

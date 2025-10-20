@@ -249,6 +249,36 @@ class UI:
         # Progression (0 à 1)
         progress = 1 - (cooldown / max_cooldown)
         
+        # Message si le tour va se terminer automatiquement
+        if game.spawn_action_done and game.auto_end_turn_time:
+            remaining = max(0, (game.auto_end_turn_time - pygame.time.get_ticks()) / 1000.0)
+            if remaining > 0:
+                msg_text = self.small_font.render("Tour terminé dans {:.1f}s...".format(remaining), True, (255, 255, 0))
+                msg_rect = msg_text.get_rect(center=(screen_width//2, 30))
+                # Fond semi-transparent
+                bg_rect = msg_rect.copy()
+                bg_rect.inflate(20, 10)
+                bg_surface = pygame.Surface((bg_rect.width, bg_rect.height))
+                bg_surface.set_alpha(180)
+                bg_surface.fill((0, 0, 0))
+                self.screen.blit(bg_surface, bg_rect)
+                self.screen.blit(msg_text, msg_rect)
+    
+    def draw_spawn_buttons(self, game, screen_height):
+        """Dessine les boutons pour spawner des dinosaures avec un design moderne"""
+        current_steaks = game.player1_steaks if game.current_player == 1 else game.player2_steaks
+        costs = [40, 80, 100]
+        names = ["Rapide", "Équilibré", "Tank"]
+        descriptions = ["3 mouv.", "2 mouv.", "1 mouv."]
+        
+        for i in range(3):
+            x = 200 + i * 120
+            y = screen_height - 85
+            width = 110
+            height = 70
+            
+            # Vérifier le cooldown
+            cooldown = game.spawn_cooldowns[game.current_player][i + 1]
         # Cercle de fond
         pygame.draw.circle(self.screen, (40, 40, 50), (center_x, center_y), radius)
         
@@ -536,6 +566,9 @@ class UI:
         self.screen.blit(winner_shadow, winner_shadow_rect)
         self.screen.blit(winner_text, winner_rect)
         
+        restart_text = self.small_font.render("Appuyez sur R pour recommencer", True, (255, 255, 255))
+        restart_rect = restart_text.get_rect(center=(screen_width//2, screen_height//2 + 50))
+        self.screen.blit(restart_text, restart_rect)
         # Instructions pour rejouer
         restart_text = self.medium_font.render("Appuyez sur [R] pour rejouer", True, (200, 200, 220))
         restart_rect = restart_text.get_rect(center=(screen_width//2, panel_y + 200))
