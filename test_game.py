@@ -6,7 +6,10 @@ Test simple pour vérifier que le jeu fonctionne
 import os
 import sys
 import pygame
-from entities import Egg, Dinosaur, Trap
+from Entities.Dinosaur import Dinosaur
+from Entities.Egg import Egg
+from Entities.SpawnEgg import SpawnEgg
+from Entities.Trap import Trap
 from map_generator import MapGenerator
 from map_generator import MapGenerator
 from game import Game

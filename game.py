@@ -1,5 +1,8 @@
 import pygame
-from entities import Egg, Dinosaur, Trap, SpawnEgg
+from Entities.Dinosaur import Dinosaur
+from Entities.Egg import Egg
+from Entities.SpawnEgg import SpawnEgg
+from Entities.Trap import Trap
 from map_generator import MapGenerator
 from ui import UI
 

@@ -1,6 +1,6 @@
 import pygame
 import math
-from entities import Dinosaur
+from Entities.Dinosaur import Dinosaur
 
 class UI:
     def __init__(self, screen):
