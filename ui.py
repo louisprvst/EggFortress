@@ -12,6 +12,13 @@ class UI:
         self.small_font = pygame.font.Font(None, 24)
         self.tiny_font = pygame.font.Font(None, 18)
         
+        # Charger l'image du steak
+        try:
+            self.steak_image = pygame.image.load("assets/images/Steack/steack.png")
+            self.steak_image = pygame.transform.scale(self.steak_image, (32, 32))
+        except:
+            self.steak_image = None
+        
         # État d'animation pour les effets
         self.animation_time = 0
         self.button_hover_states = {}  # Pour tracker le survol des boutons
@@ -106,20 +113,25 @@ class UI:
     
     def _draw_steak_display(self, x, y, amount):
         """Affiche les steaks avec une icône personnalisée et animation"""
-        # Icône de viande (rectangle arrondi avec détails)
         icon_size = 32
-        icon_rect = pygame.Rect(x, y, icon_size, icon_size)
         
-        # Fond de l'icône
-        pygame.draw.rect(self.screen, (139, 69, 19), icon_rect, border_radius=6)
-        pygame.draw.rect(self.screen, (205, 133, 63), icon_rect.inflate(-8, -8), border_radius=4)
-        
-        # Détails de viande (lignes blanches)
-        pygame.draw.line(self.screen, (255, 220, 220), (x + 8, y + 12), (x + 24, y + 12), 2)
-        pygame.draw.line(self.screen, (255, 220, 220), (x + 8, y + 20), (x + 24, y + 20), 2)
-        
-        # Bordure brillante
-        pygame.draw.rect(self.screen, (255, 200, 100), icon_rect, 2, border_radius=6)
+        # Dessiner l'image du steak si disponible, sinon utiliser le rectangle
+        if self.steak_image:
+            self.screen.blit(self.steak_image, (x, y))
+        else:
+            # Fallback : icône de viande (rectangle arrondi avec détails)
+            icon_rect = pygame.Rect(x, y, icon_size, icon_size)
+            
+            # Fond de l'icône
+            pygame.draw.rect(self.screen, (139, 69, 19), icon_rect, border_radius=6)
+            pygame.draw.rect(self.screen, (205, 133, 63), icon_rect.inflate(-8, -8), border_radius=4)
+            
+            # Détails de viande (lignes blanches)
+            pygame.draw.line(self.screen, (255, 220, 220), (x + 8, y + 12), (x + 24, y + 12), 2)
+            pygame.draw.line(self.screen, (255, 220, 220), (x + 8, y + 20), (x + 24, y + 20), 2)
+            
+            # Bordure brillante
+            pygame.draw.rect(self.screen, (255, 200, 100), icon_rect, 2, border_radius=6)
         
         # Texte du montant avec effet doré
         amount_text = self.font.render(str(amount), True, (255, 215, 0))
