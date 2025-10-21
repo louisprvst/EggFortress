@@ -109,6 +109,14 @@ class Game:
             'duration': 2.0  # 2 secondes
         }
         
+        # Système de notification d'erreur
+        self.error_message = {
+            'active': False,
+            'text': '',
+            'timer': 0,
+            'duration': 2.5  # 2.5 secondes
+        }
+        
         self.init_game()
     
     def init_game(self):
@@ -163,12 +171,22 @@ class Game:
         button_width = 110
         button_height = 95
         
+        # Coûts des dinosaures
+        costs = {1: 40, 2: 80, 3: 100}
         current_steaks = self.player1_steaks if self.current_player == 1 else self.player2_steaks
         
         # Bouton Dino 1 (Rapide)
         btn1_x = start_x
         if btn1_x <= mouse_x <= btn1_x + button_width and button_y <= mouse_y <= button_y + button_height:
             cooldown = self.spawn_cooldowns[self.current_player][1]
+            # Vérifier le cooldown
+            if cooldown > 0:
+                self.show_error_message(f" Cooldown actif: {int(cooldown)}s")
+                return
+            # Vérifier si assez de steaks
+            if current_steaks < costs[1]:
+                self.show_error_message(f" Pas assez de steaks ! ({current_steaks}/{costs[1]})")
+                return
             self.action_mode = 'spawn'
             self.spawn_type = 1
             self.spawn_positions = self.calculate_spawn_positions()
@@ -176,6 +194,14 @@ class Game:
         # Bouton Dino 2 (Équilibré)
         elif start_x + button_spacing <= mouse_x <= start_x + button_spacing + button_width and button_y <= mouse_y <= button_y + button_height:
             cooldown = self.spawn_cooldowns[self.current_player][2]
+            # Vérifier le cooldown
+            if cooldown > 0:
+                self.show_error_message(f" Cooldown actif: {int(cooldown)}s")
+                return
+            # Vérifier si assez de steaks
+            if current_steaks < costs[2]:
+                self.show_error_message(f"Pas assez de steaks ! ({current_steaks}/{costs[2]})")
+                return
             self.action_mode = 'spawn'
             self.spawn_type = 2
             self.spawn_positions = self.calculate_spawn_positions()
@@ -183,6 +209,14 @@ class Game:
         # Bouton Dino 3 (Tank)
         elif start_x + button_spacing * 2 <= mouse_x <= start_x + button_spacing * 2 + button_width and button_y <= mouse_y <= button_y + button_height:
             cooldown = self.spawn_cooldowns[self.current_player][3]
+            # Vérifier le cooldown
+            if cooldown > 0:
+                self.show_error_message(f" Cooldown actif: {int(cooldown)}s")
+                return
+            # Vérifier si assez de steaks
+            if current_steaks < costs[3]:
+                self.show_error_message(f" Pas assez de steaks ! ({current_steaks}/{costs[3]})")
+                return
             self.action_mode = 'spawn'
             self.spawn_type = 3
             self.spawn_positions = self.calculate_spawn_positions()
@@ -409,6 +443,22 @@ class Game:
             self.turn_popup['timer'] += delta_time
             if self.turn_popup['timer'] >= self.turn_popup['duration']:
                 self.turn_popup['active'] = False
+    
+    def show_error_message(self, message):
+        """Affiche un message d'erreur à l'écran"""
+        self.error_message = {
+            'active': True,
+            'text': message,
+            'timer': 0,
+            'duration': 2.5
+        }
+    
+    def update_error_message(self, delta_time):
+        """Met à jour le message d'erreur"""
+        if self.error_message['active']:
+            self.error_message['timer'] += delta_time
+            if self.error_message['timer'] >= self.error_message['duration']:
+                self.error_message['active'] = False
     
     def start_move_animation(self, dinosaur, target_x, target_y):
         """Démarre l'animation de déplacement d'un dinosaure"""
@@ -774,6 +824,9 @@ class Game:
         # Mettre à jour le pop-up de tour
         self.update_turn_popup(delta_time)
         
+        # Mettre à jour le message d'erreur
+        self.update_error_message(delta_time)
+        
         # Vérifier les conditions de victoire
         if not self.game_over:
             self.check_victory()
@@ -808,6 +861,10 @@ class Game:
         # Dessiner le pop-up de changement de tour
         if self.turn_popup['active']:
             self.draw_turn_popup()
+        
+        # Dessiner le message d'erreur
+        if self.error_message['active']:
+            self.draw_error_message()
     
     def draw_grid(self):
         """Dessine la grille de jeu avec des cases carrées et des textures complètes"""
@@ -1044,3 +1101,62 @@ class Game:
             
             # Texte principal
             self.screen.blit(text, text_rect)
+    
+    def draw_error_message(self):
+        """Dessine le message d'erreur en haut de l'écran"""
+        # Animation d'échelle selon le temps
+        progress = self.error_message['timer'] / self.error_message['duration']
+        if progress < 0.2:
+            scale = progress / 0.2  # Apparition
+        elif progress > 0.8:
+            scale = 1.0 - (progress - 0.8) / 0.2  # Disparition
+        else:
+            scale = 1.0  # Stable
+        
+        if scale <= 0:
+            return
+        
+        # Dimensions et position (en haut de l'écran)
+        base_width = 550
+        base_height = 90
+        width = int(base_width * scale)
+        height = int(base_height * scale)
+        
+        x = (self.screen_width - width) // 2
+        y = 100  # Position fixe en haut
+        
+        # Fond avec dégradé rouge (erreur)
+        popup_surface = pygame.Surface((width, height))
+        popup_surface.set_alpha(240)
+        
+        # Couleur rouge pour les erreurs
+        color1 = (139, 0, 0)    # Rouge foncé
+        color2 = (220, 20, 60)  # Crimson
+        border_color = (255, 69, 0)  # Rouge-orange
+        
+        # Remplir avec dégradé simple
+        for i in range(height):
+            ratio = i / height
+            r = int(color1[0] * (1 - ratio) + color2[0] * ratio)
+            g = int(color1[1] * (1 - ratio) + color2[1] * ratio)
+            b = int(color1[2] * (1 - ratio) + color2[2] * ratio)
+            pygame.draw.line(popup_surface, (r, g, b), (0, i), (width, i))
+        
+        self.screen.blit(popup_surface, (x, y))
+        
+        # Bordure brillante
+        pygame.draw.rect(self.screen, border_color, (x, y, width, height), 5)
+        pygame.draw.rect(self.screen, (255, 255, 255), (x + 3, y + 3, width - 6, height - 6), 2)
+        
+        # Texte
+        font = pygame.font.Font(None, int(40 * scale))
+        text = font.render(self.error_message['text'], True, (255, 255, 255))
+        text_rect = text.get_rect(center=(x + width // 2, y + height // 2))
+        
+        # Ombre du texte
+        shadow = font.render(self.error_message['text'], True, (0, 0, 0))
+        shadow_rect = shadow.get_rect(center=(text_rect.centerx + 3, text_rect.centery + 3))
+        self.screen.blit(shadow, shadow_rect)
+        
+        # Texte principal
+        self.screen.blit(text, text_rect)
