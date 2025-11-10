@@ -6,10 +6,15 @@ class SpawnEgg(Entity):
     def __init__(self, x, y, player, dino_type):
         super().__init__(x, y, player)
         self.dino_type = dino_type
-        self.spawn_progress = 0.0
-        self.is_spawning = True  # L'œuf est en cours d'éclosion
-        self.is_hatching = False
-        self.hatch_animation_time = 0.0
+        # Turn-based spawn: nombre de tours requis selon le type
+        # Mapping choisi proportionnellement aux anciennes durées (20s->2 tours, 40s->4, 80s->8)
+        spawn_turns_map = {1: 2, 2: 4, 3: 8}
+        self.spawn_turns_required = spawn_turns_map.get(self.dino_type, 2)
+        self.spawn_turns_elapsed = 0
+        self.spawn_progress = 0.0  # Pour affichage (ratio)
+        self.is_spawning = True  # L'œuf est en cours d'éclosion (attente en tours)
+        self.is_hatching = False  # True lorsque l'animation d'éclosion a commencé
+        self.hatch_animation_time = 0.0  # Temps d'animation en secondes
         self.load_image()
     
     def load_image(self):
@@ -27,38 +32,39 @@ class SpawnEgg(Entity):
     
     def update_spawn(self, delta_time):
         """Met à jour l'animation de spawn"""
+        # Cette méthode est appelée chaque frame par Game.update() avec delta_time.
+        # Ici, on ne modifie plus la progression liée au temps réel :
+        # - La progression en tours est avancée via on_turn_end()
+        # - update_spawn ne met à jour que l'animation d'éclosion (en secondes)
         if not self.is_spawning:
             return
-            
-        # Temps d'éclosion selon le type (en secondes) - comme les cooldowns
-        spawn_speeds = {1: 20.0, 2: 40.0, 3: 80.0}
-        spawn_duration = spawn_speeds.get(self.dino_type, 20.0)
-        
-        # Mettre à jour la progression
-        self.spawn_progress += delta_time / spawn_duration
-        
-        # Vérifier si c'est prêt à éclore
-        if self.spawn_progress >= 1.0:
-            self.spawn_progress = 1.0
-            if not self.is_hatching:
-                self.is_hatching = True
-                self.hatch_animation_time = 0.0
-        
-        # Mettre à jour l'animation d'éclosion
+
+        # Mettre à jour l'animation d'éclosion (si elle a commencé)
         if self.is_hatching:
             self.hatch_animation_time += delta_time
     
     def is_ready_to_hatch(self):
         """Vérifie si l'œuf est prêt à éclore (animation terminée)"""
         return self.is_hatching and self.hatch_animation_time >= 0.5
-
     def on_turn_end(self):
-        """Called by game.end_turn() to advance spawning per turn.
-        Advances the spawn progress by one 'turn' unit (1.0 second equivalent).
-        If the egg becomes ready to hatch, it will start the hatching animation.
+        """Appelé par Game.end_turn() : avance d'un tour l'éclosion.
+        Si le nombre de tours requis est atteint, démarre l'animation d'éclosion.
         """
-        # Use 1.0 as a reasonable per-turn time slice to advance spawn progress
-        self.update_spawn(1.0)
+        if not self.is_spawning or self.is_hatching:
+            return
+
+        self.spawn_turns_elapsed += 1
+        # Mettre à jour la progression pour l'affichage (ratio)
+        try:
+            self.spawn_progress = self.spawn_turns_elapsed / self.spawn_turns_required
+        except ZeroDivisionError:
+            self.spawn_progress = 1.0
+
+        if self.spawn_turns_elapsed >= self.spawn_turns_required:
+            self.spawn_progress = 1.0
+            self.is_hatching = True
+            self.hatch_animation_time = 0.0
+    
     
     def draw(self, screen, cell_width, cell_height, board_offset_x=0, board_offset_y=0):
         """Dessine l'œuf de spawn avec animations (supporte offsets)"""
@@ -71,22 +77,34 @@ class SpawnEgg(Entity):
                 x_pos = self.x * cell_width + board_offset_x
                 y_pos = self.y * cell_height + board_offset_y
                 screen.blit(self.image, (x_pos, y_pos))
-            
-            # Barre de progression du spawn
-            progress_width = cell_width - 10
-            progress_height = 4
-            progress_x = self.x * cell_width + 5 + board_offset_x
-            progress_y = self.y * cell_height + cell_height - 8 + board_offset_y
-            
-            # Fond de la barre
-            pygame.draw.rect(screen, (100, 100, 100), 
-                            (progress_x, progress_y, progress_width, progress_height))
-            
-            # Barre de progression
-            filled_width = int(progress_width * self.spawn_progress)
-            color = (0, 255, 0) if self.spawn_progress > 0.8 else (255, 255, 0) if self.spawn_progress > 0.5 else (255, 100, 100)
-            pygame.draw.rect(screen, color, 
-                            (progress_x, progress_y, filled_width, progress_height))
+            # Afficher le nombre de tours restants avant éclosion (au centre de la case)
+            remaining_turns = max(0, self.spawn_turns_required - self.spawn_turns_elapsed)
+
+            # Petit fond circulaire pour la lisibilité
+            radius = 14
+            num_x = self.x * cell_width + cell_width - radius - 6 + board_offset_x
+            num_y = self.y * cell_height + 6 + board_offset_y
+            try:
+                pygame.draw.circle(screen, (30, 30, 30), (num_x + radius//2, num_y + radius//2), radius)
+            except Exception:
+                pass
+
+            # Rendu du nombre
+            try:
+                font = pygame.font.Font(None, 24)
+                text = font.render(str(remaining_turns), True, (255, 255, 255))
+                text_rect = text.get_rect(center=(num_x + radius//2, num_y + radius//2))
+                # Ombre pour lisibilité
+                shadow = font.render(str(remaining_turns), True, (0, 0, 0))
+                shadow_rect = shadow.get_rect(center=(text_rect.x + 2, text_rect.y + 2))
+                screen.blit(shadow, shadow_rect)
+                screen.blit(text, text_rect)
+            except Exception:
+                # Si problème d'affichage de police, dessiner un simple rectangle et le chiffre en fallback
+                try:
+                    pygame.draw.rect(screen, (0, 0, 0), (num_x, num_y, radius * 2, radius * 2))
+                except Exception:
+                    pass
         else:
             # Animation d'éclosion
             shake_intensity = 5
