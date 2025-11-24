@@ -6,6 +6,7 @@ from Entities.SpawnEgg import SpawnEgg
 from Entities.Trap import Trap
 from map_generator import MapGenerator
 from ui import UI
+from ai.search_ai import SearchAI
 
 class Game:
     def __init__(self, screen):
@@ -888,8 +889,115 @@ class Game:
         # Réinitialiser le timer du tour
         self.turn_start_time = pygame.time.get_ticks()
         
+        # Réinitialiser l'état de l'IA
+        self.ai_thinking = False
+        self.ai_action_timer = 0
+        
         # Vérifier les conditions de victoire
         self.check_victory()
+    
+    def execute_ai_turn(self):
+        """Fait jouer l'IA pour son tour"""
+        try:
+            # L'IA choisit une action
+            action = self.ai.choose_action(self)
+            
+            if action:
+                # Exécuter l'action choisie
+                self.execute_ai_action(action)
+            else:
+                # Aucune action possible, passer le tour
+                self.end_turn()
+        except Exception as e:
+            print(f"Erreur IA: {e}")
+            # En cas d'erreur, passer le tour
+            self.end_turn()
+        finally:
+            self.ai_thinking = False
+    
+    def execute_ai_action(self, action):
+        """Exécute une action choisie par l'IA"""
+        action_type = action.get('type')
+        
+        if action_type == 'spawn':
+            # Spawner un dinosaure
+            x, y = action['x'], action['y']
+            dino_type = action['dino_type']
+            self.spawn_dinosaur(x, y, dino_type)
+            self.spawn_action_done = True
+            # Terminer le tour après 1.5 secondes
+            self.auto_end_turn_time = pygame.time.get_ticks() + 1500
+        
+        elif action_type == 'move':
+            # Déplacer un dinosaure
+            dinosaur = action['dinosaur']
+            target_x, target_y = action['target_x'], action['target_y']
+            # Trouver le dinosaure réel (pas la copie)
+            real_dino = None
+            for dino in self.dinosaurs:
+                if (dino.x == dinosaur.x and dino.y == dinosaur.y and 
+                    dino.player == dinosaur.player and dino.dino_type == dinosaur.dino_type and
+                    not dino.has_moved):
+                    real_dino = dino
+                    break
+            
+            if real_dino and not real_dino.has_moved:
+                self.move_dinosaur(real_dino, target_x, target_y)
+                # Après le déplacement, l'IA peut faire une autre action
+                pygame.time.wait(300)  # Petit délai pour voir le mouvement
+                # Réinitialiser pour permettre une autre action
+                self.ai_thinking = False
+                self.ai_action_timer = 0.3  # Petit délai avant la prochaine action
+        
+        elif action_type == 'attack':
+            # Attaquer une cible
+            attacker = action['attacker']
+            target = action['target']
+            target_type = action.get('target_type', 'dinosaur')
+            
+            # Trouver l'attaquant réel
+            real_attacker = None
+            for dino in self.dinosaurs:
+                if (dino.x == attacker.x and dino.y == attacker.y and 
+                    dino.player == attacker.player and dino.dino_type == attacker.dino_type and
+                    not dino.has_moved):
+                    real_attacker = dino
+                    break
+            
+            if real_attacker and not real_attacker.has_moved:
+                if target_type == 'egg':
+                    # Attaquer l'œuf
+                    egg = self.eggs.get(target.player)
+                    if egg:
+                        self.attack_egg(real_attacker, egg)
+                else:
+                    # Attaquer un dinosaure
+                    real_target = None
+                    for dino in self.dinosaurs:
+                        if (dino.x == target.x and dino.y == target.y and 
+                            dino.player == target.player and dino.dino_type == target.dino_type):
+                            real_target = dino
+                            break
+                    
+                    if real_target:
+                        self.attack(real_attacker, real_target)
+                
+                # Après l'attaque, permettre une autre action
+                pygame.time.wait(300)
+                self.ai_thinking = False
+                self.ai_action_timer = 0.3
+        
+        elif action_type == 'trap':
+            # Placer un piège
+            x, y = action['x'], action['y']
+            self.place_trap(x, y)
+            self.spawn_action_done = True
+            # Terminer le tour après 1.5 secondes
+            self.auto_end_turn_time = pygame.time.get_ticks() + 1500
+        
+        elif action_type == 'pass':
+            # Passer le tour (seulement si aucune autre action possible)
+            self.end_turn()
     
     def restart_game(self):
         """Redémarre le jeu"""
