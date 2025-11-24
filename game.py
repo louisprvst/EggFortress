@@ -26,47 +26,38 @@ class Game:
         self.eggs = {}
         self.dinosaurs = []
         self.traps = []
-        self.spawn_eggs = []  # Nouveaux œufs de spawn pour les dinosaures
+        self.spawn_eggs = []
         
         # Map
-        self.map_generator = MapGenerator(width=16, height=12, visual_width=32, visual_height=24)  # Plus de cases, plus petites
-        self.grid = self.map_generator.generate_map()  # Grille logique pour le gameplay
-        self.visual_base, self.visual_elements = self.map_generator.generate_visual_map()  # Grilles visuelles en couches
+        self.map_generator = MapGenerator(width=16, height=12, visual_width=32, visual_height=24)
+        self.grid = self.map_generator.generate_map()
+        self.visual_base, self.visual_elements = self.map_generator.generate_visual_map()
         
-        # Grilles : logique (cases carrées pour le gameplay)
         self.logic_width = 16
         self.logic_height = 12
         
         # Calculer la taille des cellules pour qu'elles soient carrées
         available_height = self.screen_height - 120
         
-        # Calculer la taille de cellule la plus grande possible tout en restant carrée
         cell_size_by_width = self.screen_width // self.logic_width
         cell_size_by_height = available_height // self.logic_height
         
-        # Prendre la plus petite des deux pour que tout rentre à l'écran
         self.cell_size = min(cell_size_by_width, cell_size_by_height)
         
-        # Les cellules logiques sont carrées
         self.logic_cell_width = self.cell_size
         self.logic_cell_height = self.cell_size
         
-        # Les cellules visuelles correspondent exactement aux cellules logiques
-        # (pas de double grille, une seule grille avec des cases carrées)
         self.visual_cell_width = self.cell_size
         self.visual_cell_height = self.cell_size
         
-        # Calculer le nombre de cellules visuelles nécessaires
         self.visual_width = self.logic_width
         self.visual_height = self.logic_height
         
-        # Calculer les offsets pour centrer le plateau
         self.board_width = self.logic_width * self.cell_size
         self.board_height = self.logic_height * self.cell_size
         self.board_offset_x = (self.screen_width - self.board_width) // 2
         self.board_offset_y = (available_height - self.board_height) // 2
         
-        # Garder l'ancienne référence pour compatibilité
         self.cell_width = self.logic_cell_width
         self.cell_height = self.logic_cell_height
         
@@ -76,21 +67,20 @@ class Game:
         # Sélection
         self.selected_cell = None
         self.selected_dinosaur = None
-        self.action_mode = None  # 'move', 'spawn', 'trap', 'attack_mode'
-        self.possible_moves = []  # Cases où le dinosaure sélectionné peut se déplacer
-        self.attack_targets = []  # Cibles que le dinosaure peut attaquer
-        self.spawn_positions = []  # Cases où on peut spawner des dinosaures
-        self.action_taken = False  # Une seule action par tour
-        self.spawn_action_done = False  # Si un spawn a été fait, le tour se termine
+        self.action_mode = None
+        self.possible_moves = []
+        self.attack_targets = []
+        self.spawn_positions = []
+        self.action_taken = False
+        self.spawn_action_done = False
         
         # Système de cooldown pour spawner
-        self.spawn_cooldowns = {1: {1: 0, 2: 0, 3: 0}, 2: {1: 0, 2: 0, 3: 0}}  # [joueur][type_dino]: temps_restant
-        self.last_time = pygame.time.get_ticks()  # Pour gérer le temps
+        self.spawn_cooldowns = {1: {1: 0, 2: 0, 3: 0}, 2: {1: 0, 2: 0, 3: 0}}
+        self.last_time = pygame.time.get_ticks()
         
-        # Timer du joueur (2 minutes par tour)
-        self.turn_time_limit = 120  # 2 minutes en secondes
+        self.turn_time_limit = 120
         self.turn_start_time = pygame.time.get_ticks()
-        self.auto_end_turn_time = None  # Pour terminer automatiquement après spawn
+        self.auto_end_turn_time = None
         
         # Animation de déplacement
         self.moving_dinosaur = None
@@ -104,32 +94,36 @@ class Game:
             'progress': 0
         }
         
-        # Système de pop-up pour les changements de tour
         self.turn_popup = {
             'active': False,
             'text': '',
             'timer': 0,
-            'duration': 2.0  # 2 secondes
+            'duration': 2.0
         }
         
-        # Système de notification d'erreur
         self.error_message = {
             'active': False,
             'text': '',
             'timer': 0,
-            'duration': 2.5  # 2.5 secondes
+            'duration': 2.5
+        }
+        
+        self.kill_notification = {
+            'active': False,
+            'text': '',
+            'timer': 0,
+            'duration': 3.0
         }
         
         self.init_game()
     
     def init_game(self):
-        """Initialise le jeu avec les œufs aux positions de base - version très zoomée"""
-        # Position des œufs (coins opposés de la grille 10x8)
-        egg1_pos = (1,1)  # Coin haut-gauche
-        egg2_pos = (14,10)  # Coin bas-droite (plus proche)
+        """Initialise le jeu avec les œufs aux positions de base"""
+        egg1_pos = (1,1)
+        egg2_pos = (14,10)
         
-        self.eggs[1] = Egg(egg1_pos[0], egg1_pos[1], 1)  # Joueur 1 (bleu)
-        self.eggs[2] = Egg(egg2_pos[0], egg2_pos[1], 2)  # Joueur 2 (rouge)
+        self.eggs[1] = Egg(egg1_pos[0], egg1_pos[1], 1)
+        self.eggs[2] = Egg(egg2_pos[0], egg2_pos[1], 2)
     
     def handle_event(self, event):
         if self.game_over:
@@ -138,22 +132,33 @@ class Game:
             return
         
         if event.type == pygame.MOUSEBUTTONDOWN:
-            if event.button == 1:  # Clic gauche
+            if event.button == 1:
                 mouse_x, mouse_y = event.pos
                 
-                # Vérifier si on clique sur l'UI
-                if mouse_y > self.screen_height - 100:
+                ui_height = 140
+                attack_width = 140
+                attack_height = 70
+                attack_x = (self.screen_width - attack_width) // 2
+                attack_y = self.screen_height - ui_height - attack_height - 20
+                
+                if (attack_x <= mouse_x <= attack_x + attack_width and 
+                    attack_y <= mouse_y <= attack_y + attack_height):
+                    if (self.selected_dinosaur and 
+                        self.selected_dinosaur.player == self.current_player and 
+                        not self.selected_dinosaur.has_moved and 
+                        self.selected_dinosaur.immobilized_turns == 0 and
+                        self.attack_targets):
+                        self.action_mode = 'attack_mode'
+                
+                elif mouse_y > self.screen_height - 100:
                     self.handle_ui_click(mouse_x, mouse_y)
                 else:
-                    # Ajuster les coordonnées de la souris avec l'offset du plateau
                     adjusted_x = mouse_x - self.board_offset_x
                     adjusted_y = mouse_y - self.board_offset_y
                     
-                    # Convertir position souris en coordonnées grille
                     grid_x = adjusted_x // self.cell_width
                     grid_y = adjusted_y // self.cell_height
                     
-                    # Vérifier que le clic est bien dans les limites du plateau
                     if 0 <= grid_x < self.logic_width and 0 <= grid_y < self.logic_height:
                         self.handle_grid_click(grid_x, grid_y)
         
@@ -227,19 +232,6 @@ class Game:
         # Bouton Piège
         elif start_x + button_spacing * 3 <= mouse_x <= start_x + button_spacing * 3 + button_width and button_y <= mouse_y <= button_y + button_height:
             self.action_mode = 'trap'
-        
-        # Bouton d'attaque (flottant au-dessus de la barre)
-        attack_width = 120
-        attack_height = 60
-        attack_x = (self.screen_width - attack_width) // 2
-        attack_y = self.screen_height - 140 - attack_height - 20
-        if attack_x <= mouse_x <= attack_x + attack_width and attack_y <= mouse_y <= attack_y + attack_height:
-            if (self.selected_dinosaur and 
-                self.selected_dinosaur.player == self.current_player and 
-                not self.selected_dinosaur.has_moved and 
-                self.selected_dinosaur.immobilized_turns == 0 and
-                self.attack_targets):
-                self.action_mode = 'attack_mode'
     
     def handle_grid_click(self, grid_x, grid_y):
         """Gère les clics sur la grille de jeu"""
@@ -260,7 +252,6 @@ class Game:
                 self.clear_selection()
                 self.auto_end_turn_time = pygame.time.get_ticks() + 1000
         elif self.action_mode == 'attack_mode':
-            # Mode attaque : chercher une cible valide
             target_found = False
             for target_type, tx, ty, target_entity in self.attack_targets:
                 if tx == grid_x and ty == grid_y:
@@ -270,7 +261,6 @@ class Game:
                     elif target_type == 'egg':
                         self.attack_egg(self.selected_dinosaur, target_entity)
                     
-                    # Marquer le dinosaure comme ayant agi
                     self.selected_dinosaur.has_moved = True
                     self.clear_selection()
                     self.check_victory()
@@ -283,7 +273,6 @@ class Game:
             if (dino and dino.player == self.current_player and 
                 not dino.has_moved and 
                 dino.immobilized_turns == 0):
-                # Sélectionner un dinosaure de notre équipe
                 self.selected_dinosaur = dino
                 self.selected_cell = (grid_x, grid_y)
                 self.possible_moves = self.calculate_possible_moves(dino)
@@ -291,13 +280,10 @@ class Game:
                 self.action_mode = 'move'
                 
             elif self.selected_dinosaur and self.action_mode == 'move':
-                # Vérifier si c'est un mouvement
                 if (grid_x, grid_y) in self.possible_moves:
-                    # Déplacer le dinosaure sélectionné avec animation
                     if self.start_move_animation(self.selected_dinosaur, grid_x, grid_y):
-                        pass  # Pas de fin de tour automatique pour les mouvements
+                        pass
                         
-                # Si ce n'est pas un mouvement valide, déselectionner
                 else:
                     self.clear_selection()
     
@@ -405,7 +391,7 @@ class Game:
                 target_x = dinosaur.x + dx
                 target_y = dinosaur.y + dy
                 
-                if 0 <= target_x < 20 and 0 <= target_y < 15:
+                if 0 <= target_x < self.logic_width and 0 <= target_y < self.logic_height:
                     # Vérifier s'il y a un dinosaure ennemi
                     target_dino = self.get_dinosaur_at(target_x, target_y)
                     if target_dino and target_dino.player != dinosaur.player:
@@ -462,6 +448,30 @@ class Game:
             self.error_message['timer'] += delta_time
             if self.error_message['timer'] >= self.error_message['duration']:
                 self.error_message['active'] = False
+    
+    def show_kill_notification(self, killer_player, victim_type):
+        """Affiche une notification d'élimination à l'écran"""
+        player_colors = {1: "BLEU", 2: "ROUGE"}
+        killer_name = player_colors[killer_player]
+        
+        if victim_type == 'dinosaur':
+            message = f"{killer_name} A ÉLIMINÉ UN DINOSAURE !"
+        else:
+            message = f"{killer_name} A ATTAQUÉ L'OEUF !"
+        
+        self.kill_notification = {
+            'active': True,
+            'text': message,
+            'timer': 0,
+            'duration': 3.0
+        }
+    
+    def update_kill_notification(self, delta_time):
+        """Met à jour la notification d'élimination"""
+        if self.kill_notification['active']:
+            self.kill_notification['timer'] += delta_time
+            if self.kill_notification['timer'] >= self.kill_notification['duration']:
+                self.kill_notification['active'] = False
     
     def start_move_animation(self, dinosaur, target_x, target_y):
         """Démarre l'animation de déplacement d'un dinosaure"""
@@ -586,22 +596,23 @@ class Game:
         damage = attacker.attack_power
         defender.take_damage(damage)
         
+        attacker.has_moved = True
+        
         if defender.health <= 0:
             self.dinosaurs.remove(defender)
-            # Donner des steaks au joueur qui a tué
+            self.show_kill_notification(attacker.player, 'dinosaur')
             if attacker.player == 1:
                 self.player1_steaks += 20
             else:
                 self.player2_steaks += 20
-        
-        # Pas de riposte - seul le défenseur prend des dégâts !
     
     def attack_egg(self, attacker, egg):
         """Attaque un œuf ennemi"""
         damage = attacker.attack_power
         egg.take_damage(damage)
         
-        # L'attaquant a terminé son mouvement
+        self.show_kill_notification(attacker.player, 'egg')
+        
         attacker.has_moved = True
     
     def end_turn(self):
@@ -830,6 +841,9 @@ class Game:
         # Mettre à jour le message d'erreur
         self.update_error_message(delta_time)
         
+        # Mettre à jour la notification d'élimination
+        self.update_kill_notification(delta_time)
+        
         # Vérifier les conditions de victoire
         if not self.game_over:
             self.check_victory()
@@ -857,6 +871,7 @@ class Game:
         # Dessiner les cibles d'attaque possibles seulement en mode attaque
         if self.action_mode == 'attack_mode':
             self.draw_attack_targets()
+            self.draw_attack_mode_instruction()
         
         # Dessiner les positions de spawn possibles
         self.draw_spawn_positions()
@@ -868,6 +883,10 @@ class Game:
         # Dessiner le message d'erreur
         if self.error_message['active']:
             self.draw_error_message()
+        
+        # Dessiner la notification d'élimination (par-dessus tout)
+        if self.kill_notification['active']:
+            self.draw_kill_notification()
     
     def draw_grid(self):
         """Dessine la grille de jeu avec des cases carrées et des textures complètes"""
@@ -962,7 +981,8 @@ class Game:
                 anim_x = self.board_offset_x + self.move_animation['current_pos'][0] * self.cell_width
                 anim_y = self.board_offset_y + self.move_animation['current_pos'][1] * self.cell_height
                 if dinosaur.image:
-                    self.screen.blit(dinosaur.image, (anim_x, anim_y))
+                    scaled_image = pygame.transform.scale(dinosaur.image, (int(self.cell_width), int(self.cell_height)))
+                    self.screen.blit(scaled_image, (anim_x, anim_y))
             else:
                 # Dessiner normalement
                 dinosaur.draw(self.screen, self.cell_width, self.cell_height, self.board_offset_x, self.board_offset_y)
@@ -991,29 +1011,77 @@ class Game:
             pygame.draw.rect(self.screen, (0, 150, 255), rect, 2)
     
     def draw_attack_targets(self):
-        """Dessine les cibles d'attaque possibles en rouge"""
+        """Dessine les cibles d'attaque possibles en rouge avec animation de pulsation"""
+        # Animation de pulsation
+        pulse = abs(pygame.math.Vector2(0, 0).angle_to((1, 0))) 
+        time_ms = pygame.time.get_ticks()
+        pulse_alpha = int(100 + 100 * abs((time_ms % 1000) / 1000.0 - 0.5))
+        
         for target_type, x, y, target_entity in self.attack_targets:
             rect = pygame.Rect(self.board_offset_x + x * self.cell_width, 
                              self.board_offset_y + y * self.cell_height, 
                              self.cell_width, self.cell_height)
-            # Surface semi-transparente rouge pour les attaques
+            
+            # Surface semi-transparente rouge pulsante pour les attaques
             s = pygame.Surface((self.cell_width, self.cell_height))
-            s.set_alpha(150)
+            s.set_alpha(pulse_alpha)
             s.fill((255, 50, 50))
             self.screen.blit(s, (self.board_offset_x + x * self.cell_width, 
                                self.board_offset_y + y * self.cell_height))
-            pygame.draw.rect(self.screen, (255, 100, 100), rect, 3)
             
-            # Dessiner une croix pour indiquer l'attaque
+            # Bordure rouge épaisse
+            pygame.draw.rect(self.screen, (255, 0, 0), rect, 4)
+            pygame.draw.rect(self.screen, (255, 255, 255), rect.inflate(-4, -4), 2)
+            
+            # Dessiner des cercles concentriques pour l'effet de cible
             center_x = self.board_offset_x + x * self.cell_width + self.cell_width // 2
             center_y = self.board_offset_y + y * self.cell_height + self.cell_height // 2
-            size = 10
+            
+            # Cercles de cible
+            pygame.draw.circle(self.screen, (255, 255, 255), (center_x, center_y), 20, 3)
+            pygame.draw.circle(self.screen, (255, 100, 100), (center_x, center_y), 15, 2)
+            
+            # Croix centrale pour indiquer l'attaque
+            size = 12
             pygame.draw.line(self.screen, (255, 255, 255), 
-                           (center_x - size, center_y - size), 
-                           (center_x + size, center_y + size), 3)
+                           (center_x - size, center_y), 
+                           (center_x + size, center_y), 4)
             pygame.draw.line(self.screen, (255, 255, 255), 
-                           (center_x + size, center_y - size), 
-                           (center_x - size, center_y + size), 3)
+                           (center_x, center_y - size), 
+                           (center_x, center_y + size), 4)
+            
+            # Indicateur du type de cible
+            font = pygame.font.Font(None, 20)
+            if target_type == 'dinosaur':
+                indicator = font.render("🦖", True, (255, 255, 255))
+            else:
+                indicator = font.render("🥚", True, (255, 255, 255))
+            indicator_rect = indicator.get_rect(center=(center_x, center_y + self.cell_height // 2 - 10))
+            self.screen.blit(indicator, indicator_rect)
+    
+    def draw_attack_mode_instruction(self):
+        """Affiche un message indiquant de cliquer sur une cible"""
+        width = 400
+        height = 60
+        x = (self.screen_width - width) // 2
+        y = 30
+        
+        instruction_surface = pygame.Surface((width, height))
+        instruction_surface.set_alpha(230)
+        instruction_surface.fill((255, 100, 0))
+        self.screen.blit(instruction_surface, (x, y))
+        
+        pygame.draw.rect(self.screen, (255, 150, 50), (x, y, width, height), 4)
+        pygame.draw.rect(self.screen, (255, 255, 255), (x + 2, y + 2, width - 4, height - 4), 2)
+        
+        font = pygame.font.Font(None, 32)
+        text = font.render("CLIQUEZ SUR UNE CIBLE POUR ATTAQUER", True, (255, 255, 255))
+        text_rect = text.get_rect(center=(x + width // 2, y + height // 2))
+        
+        shadow = font.render("CLIQUEZ SUR UNE CIBLE POUR ATTAQUER", True, (0, 0, 0))
+        shadow_rect = shadow.get_rect(center=(text_rect.centerx + 2, text_rect.centery + 2))
+        self.screen.blit(shadow, shadow_rect)
+        self.screen.blit(text, text_rect)
     
     def draw_spawn_positions(self):
         """Dessine les positions de spawn possibles en bleu"""
@@ -1160,6 +1228,71 @@ class Game:
         shadow = font.render(self.error_message['text'], True, (0, 0, 0))
         shadow_rect = shadow.get_rect(center=(text_rect.centerx + 3, text_rect.centery + 3))
         self.screen.blit(shadow, shadow_rect)
+        
+        # Texte principal
+        self.screen.blit(text, text_rect)
+    
+    def draw_kill_notification(self):
+        """Dessine la notification d'élimination au centre de l'écran"""
+        # Animation d'échelle selon le temps
+        progress = self.kill_notification['timer'] / self.kill_notification['duration']
+        if progress < 0.15:
+            scale = progress / 0.15  # Apparition rapide
+        elif progress > 0.85:
+            scale = 1.0 - (progress - 0.85) / 0.15  # Disparition rapide
+        else:
+            scale = 1.0  # Stable
+        
+        if scale <= 0:
+            return
+        
+        # Effet de pulsation
+        pulse = 1.0 + 0.1 * abs((progress * 10) % 2 - 1)
+        final_scale = scale * pulse
+        
+        # Dimensions et position (centre de l'écran)
+        base_width = 700
+        base_height = 120
+        width = int(base_width * final_scale)
+        height = int(base_height * final_scale)
+        
+        x = (self.screen_width - width) // 2
+        y = (self.screen_height - height) // 2
+        
+        # Fond avec dégradé doré/orange (élimination)
+        popup_surface = pygame.Surface((width, height))
+        popup_surface.set_alpha(250)
+        
+        # Couleur dorée/orange pour les éliminations
+        color1 = (180, 50, 0)    # Orange foncé
+        color2 = (255, 140, 0)   # Orange doré
+        border_color = (255, 215, 0)  # Or
+        
+        # Remplir avec dégradé
+        for i in range(height):
+            ratio = i / height
+            r = int(color1[0] * (1 - ratio) + color2[0] * ratio)
+            g = int(color1[1] * (1 - ratio) + color2[1] * ratio)
+            b = int(color1[2] * (1 - ratio) + color2[2] * ratio)
+            pygame.draw.line(popup_surface, (r, g, b), (0, i), (width, i))
+        
+        self.screen.blit(popup_surface, (x, y))
+        
+        # Bordures multiples pour effet brillant
+        pygame.draw.rect(self.screen, border_color, (x, y, width, height), 6)
+        pygame.draw.rect(self.screen, (255, 255, 255), (x + 4, y + 4, width - 8, height - 8), 3)
+        pygame.draw.rect(self.screen, (255, 200, 0), (x + 8, y + 8, width - 16, height - 16), 2)
+        
+        # Texte avec effet gras
+        font = pygame.font.Font(None, int(50 * final_scale))
+        text = font.render(self.kill_notification['text'], True, (255, 255, 255))
+        text_rect = text.get_rect(center=(x + width // 2, y + height // 2))
+        
+        # Ombre du texte (multiple pour effet 3D)
+        for offset in [(4, 4), (3, 3), (2, 2)]:
+            shadow = font.render(self.kill_notification['text'], True, (0, 0, 0))
+            shadow_rect = shadow.get_rect(center=(text_rect.centerx + offset[0], text_rect.centery + offset[1]))
+            self.screen.blit(shadow, shadow_rect)
         
         # Texte principal
         self.screen.blit(text, text_rect)
