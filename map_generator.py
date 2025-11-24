@@ -62,21 +62,47 @@ class MapGenerator:
                 row.append('grass')
             grid.append(row)
         
-        # Placer 6 arbres à des positions stratégiques fixes
-        # Adapter les positions pour la grille visuelle 32x24 (qui correspond à logique 16x12)
-        # Ratio: 2 cases visuelles = 1 case logique
-        tree_positions = [
-            (4, 4),    # Haut gauche (case logique ~2,2)
-            (27, 4),   # Haut droite (case logique ~13,2)
-            (4, 19),   # Bas gauche (case logique ~2,9)
-            (27, 19),  # Bas droite (case logique ~13,9)
-            (15, 8),   # Centre haut (case logique ~7,4)
-            (15, 15)   # Centre bas (case logique ~7,7)
+        # Configuration personnalisée de la map
+        # Types disponibles: 'tree', 'bush', 'dirt'
+        custom_elements = [
+            # Terre
+            (6, 4, 'dirt'),
+            (7, 4, 'dirt'),
+            (5, 5, 'dirt'),
+            (6, 5, 'dirt'),
+            (7, 5, 'dirt'),
+            (8, 5, 'dirt'),
+            (5, 6, 'dirt'),
+            (6, 6, 'dirt'),
+            (6, 7, 'dirt'),
+            (7, 6, 'dirt'),
+            (8, 6, 'dirt'),
+            (7, 7, 'dirt'),
+            (8, 7, 'dirt'),
+            (9, 7, 'dirt'),
+            (7, 3, 'dirt'),
+            (8, 4, 'dirt'),
+            (9, 5, 'dirt'),
+            (7, 8, 'dirt'),
+            # Arbres
+            (3, 3, 'tree'),
+            (10, 5, 'tree'),
+            (2, 8, 'tree'),
+            (13, 2, 'tree'),
+            (7, 1, 'tree'),
+            (8, 10, 'tree'),
+            # Buissons
+            (0, 4, 'bush'),
+            (12, 4, 'bush'),
+            (4, 9, 'bush'),
+            (14, 6, 'bush'),
+            (11, 9, 'bush'),
         ]
         
-        for x, y in tree_positions:
+        # Placer tous les éléments personnalisés
+        for x, y, terrain_type in custom_elements:
             if 0 <= x < self.visual_width and 0 <= y < self.visual_height:
-                grid[y][x] = 'tree'
+                grid[y][x] = terrain_type
         
         return grid
     

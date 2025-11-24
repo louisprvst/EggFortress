@@ -319,6 +319,9 @@ class Game:
             cooldown_times = {1: 5, 2: 8, 3: 12}  # en secondes - cooldowns des boutons
             self.spawn_cooldowns[self.current_player][dino_type] = cooldown_times[dino_type]
             
+            # Marquer qu'une action de spawn a été effectuée (utile pour l'IA)
+            self.spawn_action_done = True
+            self.action_taken = True
             self.clear_selection()
             return True
         return False
@@ -341,6 +344,9 @@ class Game:
             
             trap = Trap(x, y, self.current_player)
             self.traps.append(trap)
+            # Marquer qu'une action de piège a été effectuée
+            self.spawn_action_done = True
+            self.action_taken = True
             self.clear_selection()
             return True
         return False
@@ -361,6 +367,8 @@ class Game:
                 dinosaur.y = target_y
             
             dinosaur.has_moved = True
+            # Marquer qu'une action a été effectuée (utile pour la fin de tour)
+            self.action_taken = True
             self.clear_selection()
             return True
         return False
@@ -368,15 +376,30 @@ class Game:
     def calculate_possible_moves(self, dinosaur):
         """Calcule les mouvements possibles pour un dinosaure"""
         possible_moves = []
-        for dx in range(-dinosaur.movement_range, dinosaur.movement_range + 1):
-            for dy in range(-dinosaur.movement_range, dinosaur.movement_range + 1):
-                if abs(dx) + abs(dy) <= dinosaur.movement_range and (dx != 0 or dy != 0):
+        
+        # Vérifier si le dinosaure est dans la boue (dirt)
+        movement_range = dinosaur.movement_range
+        # Le dinosaure de type 3 (le plus cher avec 1 de déplacement) n'est pas affecté par la boue
+        if self.is_on_mud(dinosaur.x, dinosaur.y) and dinosaur.dino_type != 3:
+            movement_range = movement_range // 2  # Diviser par 2 si dans la boue
+        
+        for dx in range(-movement_range, movement_range + 1):
+            for dy in range(-movement_range, movement_range + 1):
+                if abs(dx) + abs(dy) <= movement_range and (dx != 0 or dy != 0):
                     new_x = dinosaur.x + dx
                     new_y = dinosaur.y + dy
-                    if (0 <= new_x < 20 and 0 <= new_y < 15 and 
+                    if (0 <= new_x < self.logic_width and 0 <= new_y < self.logic_height and 
                         self.can_move_to(dinosaur, new_x, new_y)):
                         possible_moves.append((new_x, new_y))
         return possible_moves
+    
+    def is_on_mud(self, x, y):
+        """Vérifie si une position est sur de la boue (dirt)"""
+        # Convertir les coordonnées logiques en coordonnées visuelles
+        # Les coordonnées sont les mêmes puisque la grille est 1:1
+        if 0 <= y < len(self.visual_base) and 0 <= x < len(self.visual_base[0]):
+            return self.visual_base[y][x] == 'dirt'
+        return False
     
     def calculate_attack_targets(self, dinosaur):
         """Calcule les cibles d'attaque possibles pour un dinosaure"""
@@ -547,6 +570,8 @@ class Game:
         # Réinitialiser l'animation
         self.move_animation['active'] = False
         self.clear_selection()
+        # Marquer qu'une action a été effectuée (utile pour la fin de tour)
+        self.action_taken = True
     
     def check_traps(self, dinosaur):
         """Vérifie si le dinosaure marche sur un piège ennemi"""
@@ -614,6 +639,8 @@ class Game:
         self.show_kill_notification(attacker.player, 'egg')
         
         attacker.has_moved = True
+        # Marquer qu'une action a été effectuée (utile pour la fin de tour)
+        self.action_taken = True
     
     def end_turn(self):
         """Termine le tour du joueur actuel"""
@@ -834,7 +861,7 @@ class Game:
         # Supprimer les œufs éclos (en ordre inverse pour éviter les problèmes d'index)
         for i in reversed(spawn_eggs_to_remove):
             self.spawn_eggs.pop(i)
-        
+
         # Mettre à jour le pop-up de tour
         self.update_turn_popup(delta_time)
         
