@@ -425,48 +425,56 @@ class UI:
     
     def _should_show_attack_button(self, game):
         """Vérifie si le bouton d'attaque doit être affiché"""
-        return (game.selected_dinosaur and 
-                isinstance(game.selected_dinosaur, Dinosaur) and 
-                game.selected_dinosaur.player == game.current_player and
-                not game.selected_dinosaur.has_moved and
-                game.selected_dinosaur.immobilized_turns == 0 and
-                len(game.calculate_attack_targets(game.selected_dinosaur)) > 0)
+        if not game.selected_dinosaur:
+            return False
+        if not isinstance(game.selected_dinosaur, Dinosaur):
+            return False
+        if game.selected_dinosaur.player != game.current_player:
+            return False
+        if game.selected_dinosaur.has_moved:
+            return False
+        if game.selected_dinosaur.immobilized_turns > 0:
+            return False
+        
+        # Calculer les cibles directement
+        game.attack_targets = game.calculate_attack_targets(game.selected_dinosaur)
+        return len(game.attack_targets) > 0
     
     def _draw_attack_button(self, game, ui_y, screen_width):
-        """Dessine le bouton d'attaque flottant"""
-        width, height = 120, 60
+        """Dessine le bouton d'attaque flottant avec compteur de cibles"""
+        width, height = 140, 70
         x = (screen_width - width) // 2
-        y = ui_y - height - 20  # Au-dessus de la barre UI
+        y = ui_y - height - 20
         
         button_rect = pygame.Rect(x, y, width, height)
         
-        # Effet de pulsation
         pulse = abs(math.sin(self.animation_time * 3)) * 0.15 + 0.85
         
-        # Ombre portée
         shadow = button_rect.copy()
         shadow.x += 5
         shadow.y += 5
         pygame.draw.rect(self.screen, (0, 0, 0, 150), shadow, border_radius=12)
         
-        # Fond rouge pulsant
         bg_color = (220, 40, 60)
         scaled_color = tuple(int(c * pulse) for c in bg_color)
         pygame.draw.rect(self.screen, scaled_color, button_rect, border_radius=12)
         
-        # Bordure lumineuse
         pygame.draw.rect(self.screen, (255, 100, 120), button_rect, 4, border_radius=12)
         pygame.draw.rect(self.screen, (255, 255, 255, 150), button_rect.inflate(-4, -4), 2, border_radius=10)
         
-        # Icône épée (X stylisé pour attaque)
         sword_text = self.font.render("X", True, (255, 255, 255))
-        sword_rect = sword_text.get_rect(center=(x + width//2, y + 18))
+        sword_rect = sword_text.get_rect(center=(x + width//2, y + 20))
         self.screen.blit(sword_text, sword_rect)
         
-        # Texte "ATTAQUER"
         attack_text = self.small_font.render("ATTAQUER", True, (255, 255, 255))
-        attack_rect = attack_text.get_rect(center=(x + width//2, y + height - 15))
+        attack_rect = attack_text.get_rect(center=(x + width//2, y + height - 20))
         self.screen.blit(attack_text, attack_rect)
+        
+        # Nombre de cibles disponibles
+        num_targets = len(game.attack_targets)
+        target_text = self.tiny_font.render(f"{num_targets} cible(s)", True, (255, 255, 100))
+        target_rect = target_text.get_rect(center=(x + width//2, y + height - 5))
+        self.screen.blit(target_text, target_rect)
     
     def _draw_overlays(self, game, screen_width, screen_height):
         """Dessine les overlays (game over, messages temporaires, etc.)"""

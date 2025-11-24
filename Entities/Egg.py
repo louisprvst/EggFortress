@@ -61,22 +61,42 @@ class Egg(Entity):
         self.draw_health_bar_pixelart(screen, cell_width, cell_height, board_offset_x, board_offset_y)
     
     def draw_health_bar_pixelart(self, screen, cell_width, cell_height, board_offset_x=0, board_offset_y=0):
-        """Dessine la barre de vie avec les images pixel art des assets (supporte offsets)"""
+        """Dessine une grande barre de vie avec les images pixel art à côté de l'œuf"""
         health_ratio = self.health / self.max_health
         health_percentage = int(health_ratio * 10) * 10  # Arrondir à la dizaine
         
         try:
             # Charger l'image de barre de vie correspondante
             health_bar_image = pygame.image.load(f"assets/images/LifeBars/{health_percentage}%.png")
-            health_bar_image = pygame.transform.scale(health_bar_image, (cell_width - 10, 12))
             
-            # Position de la barre de vie avec offsets
-            bar_x = self.x * cell_width + 5 + board_offset_x
-            bar_y = self.y * cell_height - 18 + board_offset_y
+            # Très grande taille pour les œufs
+            bar_width = 150
+            bar_height = 35
+            health_bar_image = pygame.transform.scale(health_bar_image, (bar_width, bar_height))
             
+            # Position selon le joueur
+            if self.player == 1:  # Bleu - à gauche
+                bar_x = self.x * cell_width - bar_width - 15 + board_offset_x
+            else:  # Rouge - à droite
+                bar_x = self.x * cell_width + cell_width + 15 + board_offset_x
+            
+            bar_y = self.y * cell_height + (cell_height - bar_height) // 2 + board_offset_y
+            
+            # Afficher directement la barre de vie sans fond ni bordure
             screen.blit(health_bar_image, (bar_x, bar_y))
             
-        except:
+            # Afficher le texte HP en plus gros
+            font = pygame.font.Font(None, 28)
+            hp_text = font.render(f"{self.health}/{self.max_health}", True, (255, 255, 255))
+            text_rect = hp_text.get_rect(center=(bar_x + bar_width // 2, bar_y + bar_height + 18))
+            
+            # Ombre du texte
+            shadow = font.render(f"{self.health}/{self.max_health}", True, (0, 0, 0))
+            shadow_rect = shadow.get_rect(center=(text_rect.centerx + 2, text_rect.centery + 2))
+            screen.blit(shadow, shadow_rect)
+            screen.blit(hp_text, text_rect)
+            
+        except Exception as e:
             # Fallback vers l'ancienne méthode si les images ne sont pas trouvées
             bar_width = cell_width - 10
             bar_height = 8
