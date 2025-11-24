@@ -25,8 +25,6 @@ class MenuScreen:
         
         # Animation
         self.time = 0
-        self.dino_positions = []
-        self.init_dino_animations()
         
         # Boutons
         self.buttons = {
@@ -35,61 +33,6 @@ class MenuScreen:
             "quit": pygame.Rect(self.screen_width//2 - 150, 600, 300, 80),
             "back": pygame.Rect(50, self.screen_height - 100, 150, 60)
         }
-        
-        # Charger les images des dinosaures si disponibles
-        self.dino_images = self.load_dino_images()
-        
-    def load_dino_images(self):
-        """Charge les images des dinosaures pour l'animation"""
-        images = {}
-        try:
-            # Charger les images de dinosaures des assets
-            for i in range(1, 4):  # Types 1, 2, 3
-                for color in ["Blue", "Red"]:
-                    img_path = f"assets/images/Dinos/Dino{i}_{color}.png"
-                    if os.path.exists(img_path):
-                        img = pygame.image.load(img_path)
-                        # Redimensionner pour le menu
-                        img = pygame.transform.scale(img, (80, 80))
-                        images[f"dino{i}_{color.lower()}"] = img
-        except:
-            pass
-        return images
-    
-    def init_dino_animations(self):
-        """Initialise les positions d'animation des dinosaures"""
-        for i in range(6):  # 6 dinosaures animés
-            self.dino_positions.append({
-                'x': random.randint(50, self.screen_width - 100),
-                'y': random.randint(200, self.screen_height - 200),
-                'speed': random.uniform(0.5, 2.0),
-                'direction': random.uniform(0, 2 * math.pi),
-                'type': random.randint(1, 3),
-                'color': random.choice(['blue', 'red']),
-                'bounce_time': random.uniform(0, 10)
-            })
-    
-    def update(self, delta_time):
-        """Met à jour les animations"""
-        self.time += delta_time
-        
-        # Animer les dinosaures
-        for dino in self.dino_positions:
-            dino['bounce_time'] += delta_time
-            
-            # Mouvement flottant
-            dino['x'] += math.cos(dino['direction']) * dino['speed']
-            dino['y'] += math.sin(dino['direction']) * dino['speed']
-            
-            # Rebond sur les bords
-            if dino['x'] <= 50 or dino['x'] >= self.screen_width - 100:
-                dino['direction'] = math.pi - dino['direction']
-            if dino['y'] <= 150 or dino['y'] >= self.screen_height - 150:
-                dino['direction'] = -dino['direction']
-            
-            # Garder dans les limites
-            dino['x'] = max(50, min(self.screen_width - 100, dino['x']))
-            dino['y'] = max(150, min(self.screen_height - 150, dino['y']))
     
     def handle_event(self, event):
         """Gère les événements du menu"""
@@ -130,9 +73,6 @@ class MenuScreen:
         # Fond dégradé
         self.draw_gradient_background()
         
-        # Dinosaures animés en arrière-plan
-        self.draw_animated_dinos()
-        
         # Titre principal
         title_text = self.title_font.render("EGG FORTRESS", True, (255, 255, 255))
         title_shadow = self.title_font.render("EGG FORTRESS", True, (0, 0, 0))
@@ -159,10 +99,7 @@ class MenuScreen:
         """Dessine l'écran de sélection du mode de jeu"""
         # Fond dégradé
         self.draw_gradient_background()
-        
-        # Dinosaures animés en arrière-plan (plus faibles)
-        self.draw_animated_dinos()
-        
+
         # Titre
         title_text = self.title_font.render("MODE DE JEU", True, (255, 255, 255))
         title_shadow = self.title_font.render("MODE DE JEU", True, (0, 0, 0))
@@ -313,30 +250,6 @@ class MenuScreen:
             b = int(60 * (1 - ratio))
             pygame.draw.line(self.screen, (r, g, b), (0, y), (self.screen_width, y))
     
-    def draw_animated_dinos(self):
-        """Dessine les dinosaures animés en arrière-plan"""
-        for dino in self.dino_positions:
-            # Effet de flottement
-            float_offset = math.sin(dino['bounce_time'] * 2) * 5
-            
-            x = int(dino['x'])
-            y = int(dino['y'] + float_offset)
-            
-            # Utiliser l'image si disponible, sinon dessiner un cercle
-            key = f"dino{dino['type']}_{dino['color']}"
-            if key in self.dino_images:
-                # Effet de transparence
-                img = self.dino_images[key].copy()
-                img.set_alpha(100)  # Semi-transparent
-                img_rect = img.get_rect(center=(x, y))
-                self.screen.blit(img, img_rect)
-            else:
-                # Fallback: dessiner un cercle coloré
-                color = (100, 100, 255) if dino['color'] == 'blue' else (255, 100, 100)
-                pygame.draw.circle(self.screen, color, (x, y), 30, 3)
-                # Petit cercle au centre
-                pygame.draw.circle(self.screen, (255, 255, 255), (x, y), 5)
-    
     def draw_button(self, button_name, text, base_color, hover_color):
         """Dessine un bouton avec effet de survol"""
         mouse_pos = pygame.mouse.get_pos()
@@ -477,8 +390,6 @@ class MenuManager:
                 elif result == "quit":
                     return "quit"
             
-            # Mise à jour et rendu
-            self.menu.update(delta_time)
             self.menu.draw()
             
             pygame.display.flip()
