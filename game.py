@@ -1,4 +1,5 @@
 import pygame
+import random
 from Entities.Dinosaur import Dinosaur
 from Entities.Egg import Egg
 from Entities.SpawnEgg import SpawnEgg
@@ -11,6 +12,22 @@ class Game:
         self.screen = screen
         self.screen_width = screen.get_width()
         self.screen_height = screen.get_height()
+        
+        # Initialiser le système audio
+        pygame.mixer.init()
+        
+        # Charger les sons
+        self.sounds = self.load_sounds()
+        
+        # Timer pour le son ambiant aléatoire (entre 5 et 15 secondes pour plus de fréquence)
+        self.ambient_sound_timer = random.uniform(5, 15)
+        
+        # Menu des paramètres en jeu
+        self.settings_open = False
+        self.dragging_music = False
+        self.dragging_sfx = False
+        self.music_volume = 0.3
+        self.sfx_volume = 1.0
         
         # États du jeu
         self.current_player = 1  # 1 pour bleu, 2 pour rouge
@@ -125,15 +142,145 @@ class Game:
         self.eggs[1] = Egg(egg1_pos[0], egg1_pos[1], 1)
         self.eggs[2] = Egg(egg2_pos[0], egg2_pos[1], 2)
     
+    def load_sounds(self):
+        """Charge tous les sons du jeu"""
+        sounds = {}
+        sound_path = "assets/sounds/"
+        
+        sound_files = {
+            'little_dino': 'little-dino.mp3',
+            'mid_dino': 'mid-dino.mp3',
+            'big_dino': 'big-dino.mp3',
+            'death': 'death.mp3',
+            'ambient': 'de-temps-en-temps.mp3',
+            'egg_crack': 'egg-crack.mp3',
+            'big_step': 'big-step.mp3',
+            'mid_little_step': 'mid-little-step.mp3'
+        }
+        
+        for sound_name, filename in sound_files.items():
+            try:
+                full_path = sound_path + filename
+                sound = pygame.mixer.Sound(full_path)
+                sounds[sound_name] = sound
+            except Exception as e:
+                print(f"Impossible de charger le son {filename}: {e}")
+                sounds[sound_name] = None
+        
+        # Charger et lancer la musique de fond en boucle
+        try:
+            pygame.mixer.music.load(sound_path + 'music-in-game.mp3')
+            pygame.mixer.music.set_volume(0.3)  # Volume à 30% pour ne pas couvrir les autres sons
+            pygame.mixer.music.play(-1)  # -1 = boucle infinie
+        except Exception as e:
+            print(f"Impossible de charger la musique de fond: {e}")
+        
+        return sounds
+    
+    def play_sound(self, sound_name):
+        """Joue un son s'il est chargé"""
+        if sound_name in self.sounds and self.sounds[sound_name]:
+            self.sounds[sound_name].play()
+    
+    def set_volumes(self, music_volume, sfx_volume):
+        """Configure les volumes de musique et d'effets sonores"""
+        self.music_volume = music_volume
+        self.sfx_volume = sfx_volume
+        
+        # Appliquer le volume de la musique
+        pygame.mixer.music.set_volume(music_volume)
+        
+        # Appliquer le volume à tous les effets sonores
+        for sound_name, sound in self.sounds.items():
+            if sound:
+                sound.set_volume(sfx_volume)
+
+
+    
     def handle_event(self, event):
         if self.game_over:
             if event.type == pygame.KEYDOWN and event.key == pygame.K_r:
                 self.restart_game()
             return
         
+        # Gestion du menu des paramètres
+        if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
+            if self.settings_open:
+                self.settings_open = False
+            else:
+                self.cancel_action()
+        
+        # Si les paramètres sont ouverts, gérer les clics sur les sliders
+        if self.settings_open:
+            if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                mouse_pos = event.pos
+                
+                # Calculer les rectangles des sliders
+                settings_width = 500
+                settings_height = 400
+                settings_x = (self.screen_width - settings_width) // 2
+                settings_y = (self.screen_height - settings_height) // 2
+                
+                music_slider_rect = pygame.Rect(settings_x + 50, settings_y + 120, 400, 20)
+                sfx_slider_rect = pygame.Rect(settings_x + 50, settings_y + 220, 400, 20)
+                
+                # Bouton fermer
+                close_button_rect = pygame.Rect(settings_x + settings_width - 50, settings_y + 10, 40, 40)
+                
+                if close_button_rect.collidepoint(mouse_pos):
+                    self.settings_open = False
+                elif music_slider_rect.collidepoint(mouse_pos):
+                    self.dragging_music = True
+                    relative_x = mouse_pos[0] - music_slider_rect.x
+                    self.music_volume = max(0.0, min(1.0, relative_x / music_slider_rect.width))
+                    pygame.mixer.music.set_volume(self.music_volume)
+                elif sfx_slider_rect.collidepoint(mouse_pos):
+                    self.dragging_sfx = True
+                    relative_x = mouse_pos[0] - sfx_slider_rect.x
+                    self.sfx_volume = max(0.0, min(1.0, relative_x / sfx_slider_rect.width))
+                    for sound in self.sounds.values():
+                        if sound:
+                            sound.set_volume(self.sfx_volume)
+            
+            elif event.type == pygame.MOUSEBUTTONUP and event.button == 1:
+                self.dragging_music = False
+                self.dragging_sfx = False
+            
+            elif event.type == pygame.MOUSEMOTION:
+                if self.dragging_music:
+                    settings_width = 500
+                    settings_x = (self.screen_width - settings_width) // 2
+                    settings_y = (self.screen_height - 400) // 2
+                    music_slider_rect = pygame.Rect(settings_x + 50, settings_y + 120, 400, 20)
+                    relative_x = event.pos[0] - music_slider_rect.x
+                    self.music_volume = max(0.0, min(1.0, relative_x / music_slider_rect.width))
+                    pygame.mixer.music.set_volume(self.music_volume)
+                elif self.dragging_sfx:
+                    settings_width = 500
+                    settings_x = (self.screen_width - settings_width) // 2
+                    settings_y = (self.screen_height - 400) // 2
+                    sfx_slider_rect = pygame.Rect(settings_x + 50, settings_y + 220, 400, 20)
+                    relative_x = event.pos[0] - sfx_slider_rect.x
+                    self.sfx_volume = max(0.0, min(1.0, relative_x / sfx_slider_rect.width))
+                    for sound in self.sounds.values():
+                        if sound:
+                            sound.set_volume(self.sfx_volume)
+            return  # Ne pas traiter les autres événements si les paramètres sont ouverts
+        
         if event.type == pygame.MOUSEBUTTONDOWN:
             if event.button == 1:
                 mouse_x, mouse_y = event.pos
+                
+                # Bouton paramètres en haut à droite
+                settings_button_width = 120
+                settings_button_height = 40
+                settings_button_x = self.screen_width - settings_button_width - 20
+                settings_button_y = 20
+                
+                if (settings_button_x <= mouse_x <= settings_button_x + settings_button_width and
+                    settings_button_y <= mouse_y <= settings_button_y + settings_button_height):
+                    self.settings_open = True
+                    return
                 
                 ui_height = 140
                 attack_width = 140
@@ -167,6 +314,8 @@ class Game:
                 self.end_turn()
             elif event.key == pygame.K_ESCAPE:
                 self.cancel_action()
+            elif event.key == pygame.K_p:  # Touche P pour ouvrir les paramètres
+                self.settings_open = True
     
     def handle_ui_click(self, mouse_x, mouse_y):
         """Gère les clics sur l'interface utilisateur"""
@@ -363,6 +512,12 @@ class Game:
             elif target_egg and target_egg.player != dinosaur.player:
                 self.attack_egg(dinosaur, target_egg)
             else:
+                # Jouer le son de pas selon le type de dinosaure
+                if dinosaur.dino_type == 3:  # Big dino
+                    self.play_sound('big_step')
+                elif dinosaur.dino_type in [1, 2]:  # Little et Mid dino
+                    self.play_sound('mid_little_step')
+                
                 dinosaur.x = target_x
                 dinosaur.y = target_y
             
@@ -624,6 +779,9 @@ class Game:
         attacker.has_moved = True
         
         if defender.health <= 0:
+            # Jouer le son de mort
+            self.play_sound('death')
+            
             self.dinosaurs.remove(defender)
             self.show_kill_notification(attacker.player, 'dinosaur')
             if attacker.player == 1:
@@ -836,6 +994,13 @@ class Game:
                     self.spawn_cooldowns[player][dino_type] = max(0, 
                         self.spawn_cooldowns[player][dino_type] - delta_time)
         
+        # Gérer le son ambiant aléatoire
+        self.ambient_sound_timer -= delta_time
+        if self.ambient_sound_timer <= 0:
+            self.play_sound('ambient')
+            # Réinitialiser le timer avec un délai aléatoire entre 5 et 15 secondes
+            self.ambient_sound_timer = random.uniform(5, 15)
+        
         # Gérer le timer du tour (2 minutes max)
         elapsed_time = (current_time - self.turn_start_time) / 1000.0
         if elapsed_time >= self.turn_time_limit:
@@ -853,6 +1018,15 @@ class Game:
         for i, spawn_egg in enumerate(self.spawn_eggs):
             spawn_egg.update_spawn(delta_time)
             if spawn_egg.is_ready_to_hatch():
+                # Jouer le son de crack d'œuf puis le cri du dinosaure
+                self.play_sound('egg_crack')
+                
+                # Attendre un court instant puis jouer le cri du dino
+                sound_map = {1: 'little_dino', 2: 'mid_dino', 3: 'big_dino'}
+                # Utiliser un timer pour jouer le cri après le crack (on le joue quand même direct pour la simplicité)
+                pygame.time.delay(300)  # 300ms de délai
+                self.play_sound(sound_map[spawn_egg.dino_type])
+                
                 # Créer le dinosaure et supprimer l'œuf
                 new_dino = Dinosaur(spawn_egg.x, spawn_egg.y, spawn_egg.player, spawn_egg.dino_type)
                 self.dinosaurs.append(new_dino)
@@ -914,6 +1088,13 @@ class Game:
         # Dessiner la notification d'élimination (par-dessus tout)
         if self.kill_notification['active']:
             self.draw_kill_notification()
+        
+        # Dessiner le bouton paramètres (toujours visible)
+        self.draw_settings_button()
+        
+        # Dessiner l'overlay des paramètres si ouvert
+        if self.settings_open:
+            self.draw_settings_overlay()
     
     def draw_grid(self):
         """Dessine la grille de jeu avec des cases carrées et des textures complètes"""
@@ -1323,3 +1504,143 @@ class Game:
         
         # Texte principal
         self.screen.blit(text, text_rect)
+    
+    def draw_settings_button(self):
+        """Dessine le bouton paramètres en haut à droite"""
+        button_width = 120
+        button_height = 40
+        button_x = self.screen_width - button_width - 20
+        button_y = 20
+        
+        # Vérifier si la souris est sur le bouton
+        mouse_pos = pygame.mouse.get_pos()
+        is_hover = (button_x <= mouse_pos[0] <= button_x + button_width and
+                    button_y <= mouse_pos[1] <= button_y + button_height)
+        
+        # Couleur selon survol
+        if is_hover:
+            bg_color = (80, 100, 150)
+            border_color = (150, 180, 255)
+        else:
+            bg_color = (50, 70, 100)
+            border_color = (100, 130, 180)
+        
+        # Fond du bouton
+        button_rect = pygame.Rect(button_x, button_y, button_width, button_height)
+        pygame.draw.rect(self.screen, bg_color, button_rect, border_radius=10)
+        pygame.draw.rect(self.screen, border_color, button_rect, 3, border_radius=10)
+        
+        # Texte "Paramètres"
+        font = pygame.font.Font(None, 28)
+        text = font.render("Paramètres", True, (255, 255, 255))
+        text_rect = text.get_rect(center=(button_x + button_width // 2, button_y + button_height // 2))
+        self.screen.blit(text, text_rect)
+    
+    def draw_settings_overlay(self):
+        """Dessine l'overlay des paramètres par-dessus le jeu"""
+        # Assombrir l'arrière-plan
+        overlay = pygame.Surface((self.screen_width, self.screen_height))
+        overlay.set_alpha(180)
+        overlay.fill((0, 0, 0))
+        self.screen.blit(overlay, (0, 0))
+        
+        # Fenêtre des paramètres
+        settings_width = 500
+        settings_height = 400
+        settings_x = (self.screen_width - settings_width) // 2
+        settings_y = (self.screen_height - settings_height) // 2
+        
+        # Fond de la fenêtre avec dégradé
+        for i in range(settings_height):
+            ratio = i / settings_height
+            r = int(30 * (1 - ratio) + 50 * ratio)
+            g = int(40 * (1 - ratio) + 60 * ratio)
+            b = int(60 * (1 - ratio) + 90 * ratio)
+            pygame.draw.line(self.screen, (r, g, b), 
+                           (settings_x, settings_y + i), 
+                           (settings_x + settings_width, settings_y + i))
+        
+        # Bordure
+        pygame.draw.rect(self.screen, (100, 150, 200), 
+                        (settings_x, settings_y, settings_width, settings_height), 4, border_radius=15)
+        
+        # Titre
+        title_font = pygame.font.Font(None, 48)
+        title = title_font.render("PARAMÈTRES", True, (255, 255, 255))
+        title_rect = title.get_rect(center=(settings_x + settings_width // 2, settings_y + 40))
+        self.screen.blit(title, title_rect)
+        
+        # Bouton fermer (X)
+        close_button_x = settings_x + settings_width - 50
+        close_button_y = settings_y + 10
+        close_button_rect = pygame.Rect(close_button_x, close_button_y, 40, 40)
+        
+        mouse_pos = pygame.mouse.get_pos()
+        close_hover = close_button_rect.collidepoint(mouse_pos)
+        close_color = (200, 100, 100) if close_hover else (150, 50, 50)
+        
+        pygame.draw.rect(self.screen, close_color, close_button_rect, border_radius=5)
+        close_font = pygame.font.Font(None, 36)
+        close_text = close_font.render("X", True, (255, 255, 255))
+        close_text_rect = close_text.get_rect(center=close_button_rect.center)
+        self.screen.blit(close_text, close_text_rect)
+        
+        # === BARRE DE VOLUME MUSIQUE ===
+        label_font = pygame.font.Font(None, 32)
+        music_label = label_font.render("Volume Musique", True, (255, 255, 255))
+        music_label_rect = music_label.get_rect(center=(settings_x + settings_width // 2, settings_y + 90))
+        self.screen.blit(music_label, music_label_rect)
+        
+        # Barre de fond
+        music_slider_rect = pygame.Rect(settings_x + 50, settings_y + 120, 400, 20)
+        pygame.draw.rect(self.screen, (60, 60, 60), music_slider_rect, border_radius=10)
+        
+        # Barre de remplissage
+        music_fill_width = int(music_slider_rect.width * self.music_volume)
+        music_fill_rect = pygame.Rect(music_slider_rect.x, music_slider_rect.y, music_fill_width, music_slider_rect.height)
+        pygame.draw.rect(self.screen, (0, 200, 255), music_fill_rect, border_radius=10)
+        
+        # Bordure
+        pygame.draw.rect(self.screen, (150, 150, 150), music_slider_rect, 2, border_radius=10)
+        
+        # Pourcentage
+        percent_font = pygame.font.Font(None, 28)
+        music_percent = percent_font.render(f"{int(self.music_volume * 100)}%", True, (255, 255, 255))
+        music_percent_rect = music_percent.get_rect(center=(settings_x + settings_width // 2, settings_y + 155))
+        self.screen.blit(music_percent, music_percent_rect)
+        
+        # === BARRE DE VOLUME EFFETS SONORES ===
+        sfx_label = label_font.render("Volume Effets Sonores", True, (255, 255, 255))
+        sfx_label_rect = sfx_label.get_rect(center=(settings_x + settings_width // 2, settings_y + 190))
+        self.screen.blit(sfx_label, sfx_label_rect)
+        
+        # Barre de fond
+        sfx_slider_rect = pygame.Rect(settings_x + 50, settings_y + 220, 400, 20)
+        pygame.draw.rect(self.screen, (60, 60, 60), sfx_slider_rect, border_radius=10)
+        
+        # Barre de remplissage
+        sfx_fill_width = int(sfx_slider_rect.width * self.sfx_volume)
+        sfx_fill_rect = pygame.Rect(sfx_slider_rect.x, sfx_slider_rect.y, sfx_fill_width, sfx_slider_rect.height)
+        pygame.draw.rect(self.screen, (255, 150, 0), sfx_fill_rect, border_radius=10)
+        
+        # Bordure
+        pygame.draw.rect(self.screen, (150, 150, 150), sfx_slider_rect, 2, border_radius=10)
+        
+        # Pourcentage
+        sfx_percent = percent_font.render(f"{int(self.sfx_volume * 100)}%", True, (255, 255, 255))
+        sfx_percent_rect = sfx_percent.get_rect(center=(settings_x + settings_width // 2, settings_y + 255))
+        self.screen.blit(sfx_percent, sfx_percent_rect)
+        
+        # Instructions
+        info_font = pygame.font.Font(None, 24)
+        instructions = [
+            "Déplacez les barres pour ajuster le volume",
+            "Appuyez sur ÉCHAP ou P pour fermer"
+        ]
+        
+        y_offset = settings_y + 310
+        for instruction in instructions:
+            text = info_font.render(instruction, True, (200, 200, 200))
+            text_rect = text.get_rect(center=(settings_x + settings_width // 2, y_offset))
+            self.screen.blit(text, text_rect)
+            y_offset += 30

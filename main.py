@@ -14,12 +14,15 @@ def main():
         # Lancer le menu
         result = menu_manager.run()
         
-        if result and result == "start_game":
+        if result and result.get("action") == "start_game":
             screen = pygame.display.set_mode((0,0), pygame.FULLSCREEN)
             pygame.display.set_caption("Egg Fortress")
             
             clock = pygame.time.Clock()
             game = Game(screen)
+            
+            # Appliquer les volumes du menu au jeu
+            game.set_volumes(result.get("music_volume", 0.3), result.get("sfx_volume", 1.0))
             
             # Boucle principale du jeu
             running = True

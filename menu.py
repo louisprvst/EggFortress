@@ -15,6 +15,26 @@ class MenuScreen:
         self.screen_width = screen.get_width()
         self.screen_height = screen.get_height()
         
+        # Charger le son de clic du menu
+        self.click_sound = None
+        try:
+            self.click_sound = pygame.mixer.Sound("assets/sounds/click-menu.mp3")
+        except Exception as e:
+            print(f"Impossible de charger le son de clic: {e}")
+        
+        # Volumes (0.0 à 1.0)
+        self.music_volume = 0.3
+        self.sfx_volume = 1.0
+        
+        # Barres de volume
+        self.dragging_music = False
+        self.dragging_sfx = False
+        
+        # Appliquer les volumes initiaux
+        pygame.mixer.music.set_volume(self.music_volume)
+        if self.click_sound:
+            self.click_sound.set_volume(self.sfx_volume)
+        
         # Polices
         self.title_font = pygame.font.Font(None, 96)
         self.button_font = pygame.font.Font(None, 48)
@@ -96,23 +116,69 @@ class MenuScreen:
         if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
             mouse_pos = pygame.mouse.get_pos()
             
+            # Gestion des barres de volume dans les paramètres
+            if self.current_screen == "settings":
+                music_slider_rect = pygame.Rect(self.screen_width//2 - 200, 250, 400, 20)
+                sfx_slider_rect = pygame.Rect(self.screen_width//2 - 200, 350, 400, 20)
+                
+                if music_slider_rect.collidepoint(mouse_pos):
+                    self.dragging_music = True
+                    # Calculer le nouveau volume
+                    relative_x = mouse_pos[0] - music_slider_rect.x
+                    self.music_volume = max(0.0, min(1.0, relative_x / music_slider_rect.width))
+                    pygame.mixer.music.set_volume(self.music_volume)
+                elif sfx_slider_rect.collidepoint(mouse_pos):
+                    self.dragging_sfx = True
+                    # Calculer le nouveau volume
+                    relative_x = mouse_pos[0] - sfx_slider_rect.x
+                    self.sfx_volume = max(0.0, min(1.0, relative_x / sfx_slider_rect.width))
+                    if self.click_sound:
+                        self.click_sound.set_volume(self.sfx_volume)
+            
             if self.current_screen == "main":
                 if self.buttons["play"].collidepoint(mouse_pos):
+                    if self.click_sound:
+                        self.click_sound.play()
                     return "start_game"
                 elif self.buttons["settings"].collidepoint(mouse_pos):
+                    if self.click_sound:
+                        self.click_sound.play()
                     self.current_screen = "settings"
                 elif self.buttons["quit"].collidepoint(mouse_pos):
+                    if self.click_sound:
+                        self.click_sound.play()
                     return "quit"
             
             elif self.current_screen in ["settings", "how_to_play"]:
                 if self.buttons["back"].collidepoint(mouse_pos):
+                    if self.click_sound:
+                        self.click_sound.play()
                     self.current_screen = "main"
             
             # Bouton "Comment jouer" dans les paramètres
             if self.current_screen == "settings":
-                how_to_play_button = pygame.Rect(self.screen_width//2 - 200, 300, 400, 80)
+                how_to_play_button = pygame.Rect(self.screen_width//2 - 200, 450, 400, 80)
                 if how_to_play_button.collidepoint(mouse_pos):
+                    if self.click_sound:
+                        self.click_sound.play()
                     self.current_screen = "how_to_play"
+        
+        elif event.type == pygame.MOUSEBUTTONUP and event.button == 1:
+            self.dragging_music = False
+            self.dragging_sfx = False
+        
+        elif event.type == pygame.MOUSEMOTION:
+            if self.dragging_music:
+                music_slider_rect = pygame.Rect(self.screen_width//2 - 200, 250, 400, 20)
+                relative_x = event.pos[0] - music_slider_rect.x
+                self.music_volume = max(0.0, min(1.0, relative_x / music_slider_rect.width))
+                pygame.mixer.music.set_volume(self.music_volume)
+            elif self.dragging_sfx:
+                sfx_slider_rect = pygame.Rect(self.screen_width//2 - 200, 350, 400, 20)
+                relative_x = event.pos[0] - sfx_slider_rect.x
+                self.sfx_volume = max(0.0, min(1.0, relative_x / sfx_slider_rect.width))
+                if self.click_sound:
+                    self.click_sound.set_volume(self.sfx_volume)
         
         return None
     
@@ -220,11 +286,55 @@ class MenuScreen:
         
         # Titre
         title = self.title_font.render("PARAMÈTRES", True, (255, 255, 255))
-        title_rect = title.get_rect(center=(self.screen_width//2, 100))
+        title_rect = title.get_rect(center=(self.screen_width//2, 80))
         self.screen.blit(title, title_rect)
         
-        # Bouton Comment jouer
-        how_to_play_button = pygame.Rect(self.screen_width//2 - 200, 300, 400, 80)
+        # === BARRE DE VOLUME MUSIQUE ===
+        music_label = self.button_font.render("Volume Musique", True, (255, 255, 255))
+        music_label_rect = music_label.get_rect(center=(self.screen_width//2, 200))
+        self.screen.blit(music_label, music_label_rect)
+        
+        # Barre de fond
+        music_slider_rect = pygame.Rect(self.screen_width//2 - 200, 250, 400, 20)
+        pygame.draw.rect(self.screen, (60, 60, 60), music_slider_rect, border_radius=10)
+        
+        # Barre de remplissage
+        music_fill_width = int(music_slider_rect.width * self.music_volume)
+        music_fill_rect = pygame.Rect(music_slider_rect.x, music_slider_rect.y, music_fill_width, music_slider_rect.height)
+        pygame.draw.rect(self.screen, (0, 200, 255), music_fill_rect, border_radius=10)
+        
+        # Bordure
+        pygame.draw.rect(self.screen, (150, 150, 150), music_slider_rect, 2, border_radius=10)
+        
+        # Pourcentage
+        music_percent = self.text_font.render(f"{int(self.music_volume * 100)}%", True, (255, 255, 255))
+        music_percent_rect = music_percent.get_rect(center=(self.screen_width//2, 285))
+        self.screen.blit(music_percent, music_percent_rect)
+        
+        # === BARRE DE VOLUME EFFETS SONORES ===
+        sfx_label = self.button_font.render("Volume Effets Sonores", True, (255, 255, 255))
+        sfx_label_rect = sfx_label.get_rect(center=(self.screen_width//2, 320))
+        self.screen.blit(sfx_label, sfx_label_rect)
+        
+        # Barre de fond
+        sfx_slider_rect = pygame.Rect(self.screen_width//2 - 200, 350, 400, 20)
+        pygame.draw.rect(self.screen, (60, 60, 60), sfx_slider_rect, border_radius=10)
+        
+        # Barre de remplissage
+        sfx_fill_width = int(sfx_slider_rect.width * self.sfx_volume)
+        sfx_fill_rect = pygame.Rect(sfx_slider_rect.x, sfx_slider_rect.y, sfx_fill_width, sfx_slider_rect.height)
+        pygame.draw.rect(self.screen, (255, 150, 0), sfx_fill_rect, border_radius=10)
+        
+        # Bordure
+        pygame.draw.rect(self.screen, (150, 150, 150), sfx_slider_rect, 2, border_radius=10)
+        
+        # Pourcentage
+        sfx_percent = self.text_font.render(f"{int(self.sfx_volume * 100)}%", True, (255, 255, 255))
+        sfx_percent_rect = sfx_percent.get_rect(center=(self.screen_width//2, 385))
+        self.screen.blit(sfx_percent, sfx_percent_rect)
+        
+        # Bouton Comment jouer (déplacé plus bas)
+        how_to_play_button = pygame.Rect(self.screen_width//2 - 200, 450, 400, 80)
         self.draw_custom_button(how_to_play_button, "COMMENT JOUER", (100, 150, 200), (150, 200, 255))
         
         # Informations du jeu
@@ -234,7 +344,7 @@ class MenuScreen:
             "Jeu de stratégie au tour par tour"
         ]
         
-        y_start = 450
+        y_start = 580
         for i, text in enumerate(info_texts):
             info_surface = self.text_font.render(text, True, (200, 200, 200))
             info_rect = info_surface.get_rect(center=(self.screen_width//2, y_start + i * 40))
@@ -469,13 +579,18 @@ class MenuManager:
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     running = False
-                    return "quit"
+                    return {"action": "quit"}
                 
                 result = self.menu.handle_event(event)
                 if result == "start_game":
-                    return "start_game"
+                    # Retourner l'action et les volumes
+                    return {
+                        "action": "start_game",
+                        "music_volume": self.menu.music_volume,
+                        "sfx_volume": self.menu.sfx_volume
+                    }
                 elif result == "quit":
-                    return "quit"
+                    return {"action": "quit"}
             
             # Mise à jour et rendu
             self.menu.update(delta_time)
@@ -484,7 +599,7 @@ class MenuManager:
             pygame.display.flip()
             self.clock.tick(60)
         
-        return "quit"
+        return {"action": "quit"}
 
 
 def main():
