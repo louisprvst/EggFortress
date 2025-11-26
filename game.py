@@ -1,5 +1,4 @@
 import pygame
-import threading
 import random
 from Entities.Dinosaur import Dinosaur
 from Entities.Egg import Egg
@@ -145,21 +144,6 @@ class Game:
         self.ai_action_timer = 0
         
         self.init_game()
-        # Intelligence artificielle (joueur rouge)
-        self.ai_player = 2  # Le joueur contrôlé par l'IA
-        try:
-            self.ai = SearchAI(player=self.ai_player)
-        except Exception:
-            # En cas d'erreur d'import ou d'initialisation, laisser None pour éviter de casser
-            self.ai = None
-        self.ai_thinking = False
-        self.ai_action_delay = 0.3
-        self.ai_action_timer = 0
-        # Champs pour exécuter l'IA en arrière-plan sans bloquer le rendu
-        self.pending_ai_action = None
-        self.ai_ready = False
-        self.ai_thread_lock = threading.Lock()
-        self.ai_thread = None
     
     def init_game(self):
         """Initialise le jeu avec les œufs aux positions de base"""
@@ -908,10 +892,12 @@ class Game:
         popup_text = f"Tour {self.turn_number}\nAu tour du joueur {new_player_color} !"
         
         self.show_turn_popup(popup_text)
-        # Si c'est au tour de l'IA, permettre à l'IA de réfléchir immédiatement
+        # Si c'est au tour de l'IA, retarder son action jusqu'à la fin du pop-up
         if getattr(self, 'ai', None) is not None and self.current_player == getattr(self, 'ai_player', None):
-            # Pas de délai forcé : l'IA peut commencer à réfléchir tandis que le pop-up est affiché
-            self.ai_action_timer = 0
+            try:
+                self.ai_action_timer = max(getattr(self, 'ai_action_timer', 0), self.turn_popup.get('duration', 1.5))
+            except Exception:
+                self.ai_action_timer = getattr(self, 'ai_action_timer', 0)
         
         # Réinitialiser les actions
         self.action_taken = False
@@ -922,9 +908,8 @@ class Game:
         # Réinitialiser le timer du tour
         self.turn_start_time = pygame.time.get_ticks()
         
-        # Réinitialiser l'état de l'IA
+        # Réinitialiser l'état de l'IA (ne pas écraser ai_action_timer configuré pour le pop-up)
         self.ai_thinking = False
-        self.ai_action_timer = 0
         
         # Vérifier les conditions de victoire
         self.check_victory()
@@ -1176,49 +1161,96 @@ class Game:
         if not self.game_over:
             self.check_victory()
 
-        # Si c'est le tour de l'IA, déclencher sa réflexion / action (en arrière-plan)
-        if (not self.game_over and
-            getattr(self, 'ai', None) is not None and
-            self.current_player == getattr(self, 'ai_player', None)):
+        # (IA gérée par le timer et execute_ai_turn() de façon synchrone)
 
-            # Reset du flag popup (on veut que le pop-up ait été créé, mais on ne bloque pas)
-            if getattr(self, 'popup_just_shown', False):
-                self.popup_just_shown = False
+    def execute_ai_turn(self):
+        """Fait jouer l'IA pour son tour (appel synchrone depuis la boucle principale)."""
+        try:
+            if not getattr(self, 'ai', None):
+                self.end_turn()
+                return
 
-            # Décrémenter le timer d'action IA
-            self.ai_action_timer = max(0, getattr(self, 'ai_action_timer', 0) - delta_time)
+            action = self.ai.choose_action(self)
+            if action:
+                self.execute_ai_action(action)
+            else:
+                self.end_turn()
+        except Exception as e:
+            print(f"Erreur IA: {e}")
+            self.end_turn()
+        finally:
+            self.ai_thinking = False
 
-            # Si l'IA n'est pas en train de réfléchir et que le timer est écoulé, lancer son worker
-            if not getattr(self, 'ai_thinking', False) and self.ai_action_timer <= 0 and self.ai_thread is None:
-                self.ai_thinking = True
-                # Démarrer un thread pour calculer l'action sans bloquer le rendu
-                try:
-                    self.ai_thread = threading.Thread(target=self._ai_worker, daemon=True)
-                    self.ai_thread.start()
-                except Exception as e:
-                    print(f"Erreur démarrage thread IA: {e}")
+    def execute_ai_action(self, action):
+        """Exécute une action choisie par l'IA sur l'état réel du jeu."""
+        action_type = action.get('type')
+
+        if action_type == 'spawn':
+            x, y = action.get('x'), action.get('y')
+            dino_type = action.get('dino_type')
+            if x is not None and y is not None and dino_type is not None:
+                self.spawn_dinosaur(x, y, dino_type)
+                self.spawn_action_done = True
+                self.auto_end_turn_time = pygame.time.get_ticks() + 1500
+
+        elif action_type == 'move':
+            dinosaur = action.get('dinosaur')
+            target_x = action.get('target_x')
+            target_y = action.get('target_y')
+            if dinosaur and target_x is not None and target_y is not None:
+                # Trouver le dinosaure réel correspondant
+                real_dino = None
+                for d in self.dinosaurs:
+                    if (d.x == dinosaur.x and d.y == dinosaur.y and d.player == dinosaur.player and d.dino_type == getattr(dinosaur, 'dino_type', d.dino_type)):
+                        real_dino = d
+                        break
+
+                if real_dino and not real_dino.has_moved:
+                    self.move_dinosaur(real_dino, target_x, target_y)
+                    # petit délai visuel
+                    pygame.time.wait(200)
                     self.ai_thinking = False
+                    self.ai_action_timer = 0.3
 
-            # Si le worker a fini et a fourni une action, l'exécuter sur le thread principal
-            if getattr(self, 'ai_ready', False):
-                with self.ai_thread_lock:
-                    action = self.pending_ai_action
-                    # Reset des drapeaux
-                    self.pending_ai_action = None
-                    self.ai_ready = False
-                    self.ai_thread = None
+        elif action_type == 'attack':
+            attacker = action.get('attacker')
+            target = action.get('target')
+            target_type = action.get('target_type', 'dinosaur')
 
-                # Exécuter l'action récupérée
-                try:
-                    if action:
-                        self.execute_ai_action(action)
-                    else:
-                        # Pas d'action => passer le tour
-                        self.end_turn()
-                except Exception as e:
-                    print(f"Erreur lors de l'exécution de l'action IA: {e}")
-                finally:
+            if attacker:
+                real_attacker = None
+                for d in self.dinosaurs:
+                    if (d.x == attacker.x and d.y == attacker.y and d.player == attacker.player and d.dino_type == getattr(attacker, 'dino_type', d.dino_type)):
+                        real_attacker = d
+                        break
+
+                if real_attacker and not real_attacker.has_moved:
+                    if target_type == 'egg' and target:
+                        egg = self.eggs.get(target.player)
+                        if egg:
+                            self.attack_egg(real_attacker, egg)
+                    elif target:
+                        real_target = None
+                        for d in self.dinosaurs:
+                            if (d.x == target.x and d.y == target.y and d.player == target.player and d.dino_type == getattr(target, 'dino_type', d.dino_type)):
+                                real_target = d
+                                break
+                        if real_target:
+                            self.attack(real_attacker, real_target)
+
+                    pygame.time.wait(200)
                     self.ai_thinking = False
+                    self.ai_action_timer = 0.3
+
+        elif action_type == 'trap':
+            x, y = action.get('x'), action.get('y')
+            if x is not None and y is not None:
+                self.place_trap(x, y)
+                self.spawn_action_done = True
+                self.auto_end_turn_time = pygame.time.get_ticks() + 1500
+
+        elif action_type == 'pass':
+            self.end_turn()
     
     def draw(self):
         """Dessine le jeu"""
