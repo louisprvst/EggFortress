@@ -29,6 +29,9 @@ class Game:
         self.music_volume = 0.3
         self.sfx_volume = 1.0
         
+        # Menu pause
+        self.paused = False
+        
         # États du jeu
         self.current_player = 1  # 1 pour bleu, 2 pour rouge
         self.turn_number = 1
@@ -203,12 +206,26 @@ class Game:
                 self.restart_game()
             return
         
-        # Gestion du menu des paramètres
+        # Gestion du menu pause
         if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
             if self.settings_open:
                 self.settings_open = False
+            elif self.paused:
+                self.paused = False
             else:
-                self.cancel_action()
+                # Ouvrir le menu pause si on n'est pas en mode action spécifique
+                if self.action_mode:
+                    self.cancel_action()
+                else:
+                    self.paused = True
+            return
+        
+        # Si le jeu est en pause, gérer les clics du menu pause
+        if self.paused:
+            if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                mouse_pos = event.pos
+                self.handle_pause_menu_click(mouse_pos)
+            return
         
         # Si les paramètres sont ouverts, gérer les clics sur les sliders
         if self.settings_open:
@@ -271,17 +288,6 @@ class Game:
             if event.button == 1:
                 mouse_x, mouse_y = event.pos
                 
-                # Bouton paramètres en haut à droite
-                settings_button_width = 120
-                settings_button_height = 40
-                settings_button_x = self.screen_width - settings_button_width - 20
-                settings_button_y = 20
-                
-                if (settings_button_x <= mouse_x <= settings_button_x + settings_button_width and
-                    settings_button_y <= mouse_y <= settings_button_y + settings_button_height):
-                    self.settings_open = True
-                    return
-                
                 ui_height = 140
                 attack_width = 140
                 attack_height = 70
@@ -314,8 +320,6 @@ class Game:
                 self.end_turn()
             elif event.key == pygame.K_ESCAPE:
                 self.cancel_action()
-            elif event.key == pygame.K_p:  # Touche P pour ouvrir les paramètres
-                self.settings_open = True
     
     def handle_ui_click(self, mouse_x, mouse_y):
         """Gère les clics sur l'interface utilisateur"""
@@ -894,6 +898,36 @@ class Game:
         """Annule l'action en cours"""
         self.clear_selection()
     
+    def handle_pause_menu_click(self, mouse_pos):
+        """Gère les clics sur le menu pause"""
+        # Dimensions du menu pause
+        menu_width = 400
+        menu_height = 400
+        menu_x = (self.screen_width - menu_width) // 2
+        menu_y = (self.screen_height - menu_height) // 2
+        
+        # Bouton Reprendre
+        resume_button = pygame.Rect(menu_x + 50, menu_y + 80, menu_width - 100, 60)
+        if resume_button.collidepoint(mouse_pos):
+            self.paused = False
+            return
+        
+        # Bouton Paramètres
+        settings_button = pygame.Rect(menu_x + 50, menu_y + 160, menu_width - 100, 60)
+        if settings_button.collidepoint(mouse_pos):
+            self.paused = False
+            self.settings_open = True
+            return
+        
+        # Bouton Quitter
+        quit_button = pygame.Rect(menu_x + 50, menu_y + 240, menu_width - 100, 60)
+        if quit_button.collidepoint(mouse_pos):
+            # Retourner au menu principal
+            import main
+            pygame.mixer.music.stop()
+            main.main()
+            return
+    
     def has_tree_at(self, x, y):
         """Vérifie s'il y a un arbre à cette position logique"""
         # Convertir les coordonnées logiques en coordonnées visuelles
@@ -1089,12 +1123,13 @@ class Game:
         if self.kill_notification['active']:
             self.draw_kill_notification()
         
-        # Dessiner le bouton paramètres (toujours visible)
-        self.draw_settings_button()
-        
         # Dessiner l'overlay des paramètres si ouvert
         if self.settings_open:
             self.draw_settings_overlay()
+        
+        # Dessiner le menu pause si le jeu est en pause
+        if self.paused:
+            self.draw_pause_menu()
     
     def draw_grid(self):
         """Dessine la grille de jeu avec des cases carrées et des textures complètes"""
@@ -1505,37 +1540,6 @@ class Game:
         # Texte principal
         self.screen.blit(text, text_rect)
     
-    def draw_settings_button(self):
-        """Dessine le bouton paramètres en haut à droite"""
-        button_width = 120
-        button_height = 40
-        button_x = self.screen_width - button_width - 20
-        button_y = 20
-        
-        # Vérifier si la souris est sur le bouton
-        mouse_pos = pygame.mouse.get_pos()
-        is_hover = (button_x <= mouse_pos[0] <= button_x + button_width and
-                    button_y <= mouse_pos[1] <= button_y + button_height)
-        
-        # Couleur selon survol
-        if is_hover:
-            bg_color = (80, 100, 150)
-            border_color = (150, 180, 255)
-        else:
-            bg_color = (50, 70, 100)
-            border_color = (100, 130, 180)
-        
-        # Fond du bouton
-        button_rect = pygame.Rect(button_x, button_y, button_width, button_height)
-        pygame.draw.rect(self.screen, bg_color, button_rect, border_radius=10)
-        pygame.draw.rect(self.screen, border_color, button_rect, 3, border_radius=10)
-        
-        # Texte "Paramètres"
-        font = pygame.font.Font(None, 28)
-        text = font.render("Paramètres", True, (255, 255, 255))
-        text_rect = text.get_rect(center=(button_x + button_width // 2, button_y + button_height // 2))
-        self.screen.blit(text, text_rect)
-    
     def draw_settings_overlay(self):
         """Dessine l'overlay des paramètres par-dessus le jeu"""
         # Assombrir l'arrière-plan
@@ -1635,7 +1639,7 @@ class Game:
         info_font = pygame.font.Font(None, 24)
         instructions = [
             "Déplacez les barres pour ajuster le volume",
-            "Appuyez sur ÉCHAP ou P pour fermer"
+            "Appuyez sur ÉCHAP pour fermer"
         ]
         
         y_offset = settings_y + 310
@@ -1644,3 +1648,91 @@ class Game:
             text_rect = text.get_rect(center=(settings_x + settings_width // 2, y_offset))
             self.screen.blit(text, text_rect)
             y_offset += 30
+    
+    def draw_pause_menu(self):
+        """Dessine le menu pause"""
+        # Assombrir l'arrière-plan
+        overlay = pygame.Surface((self.screen_width, self.screen_height))
+        overlay.set_alpha(200)
+        overlay.fill((0, 0, 0))
+        self.screen.blit(overlay, (0, 0))
+        
+        # Fenêtre du menu pause
+        menu_width = 400
+        menu_height = 400
+        menu_x = (self.screen_width - menu_width) // 2
+        menu_y = (self.screen_height - menu_height) // 2
+        
+        # Fond de la fenêtre avec dégradé
+        for i in range(menu_height):
+            ratio = i / menu_height
+            r = int(40 * (1 - ratio) + 60 * ratio)
+            g = int(50 * (1 - ratio) + 70 * ratio)
+            b = int(70 * (1 - ratio) + 100 * ratio)
+            pygame.draw.line(self.screen, (r, g, b), 
+                           (menu_x, menu_y + i), 
+                           (menu_x + menu_width, menu_y + i))
+        
+        # Bordure
+        pygame.draw.rect(self.screen, (150, 180, 220), 
+                        (menu_x, menu_y, menu_width, menu_height), 5, border_radius=15)
+        
+        # Titre
+        title_font = pygame.font.Font(None, 56)
+        title = title_font.render("PAUSE", True, (255, 255, 255))
+        title_rect = title.get_rect(center=(menu_x + menu_width // 2, menu_y + 35))
+        
+        # Ombre du titre
+        title_shadow = title_font.render("PAUSE", True, (0, 0, 0))
+        shadow_rect = title_rect.copy()
+        shadow_rect.x += 3
+        shadow_rect.y += 3
+        self.screen.blit(title_shadow, shadow_rect)
+        self.screen.blit(title, title_rect)
+        
+        # Bouton Reprendre
+        resume_button = pygame.Rect(menu_x + 50, menu_y + 80, menu_width - 100, 60)
+        mouse_pos = pygame.mouse.get_pos()
+        
+        resume_hover = resume_button.collidepoint(mouse_pos)
+        resume_color = (0, 200, 100) if resume_hover else (0, 150, 80)
+        
+        pygame.draw.rect(self.screen, resume_color, resume_button, border_radius=10)
+        pygame.draw.rect(self.screen, (255, 255, 255), resume_button, 3, border_radius=10)
+        
+        button_font = pygame.font.Font(None, 40)
+        resume_text = button_font.render("REPRENDRE", True, (255, 255, 255))
+        resume_text_rect = resume_text.get_rect(center=resume_button.center)
+        self.screen.blit(resume_text, resume_text_rect)
+        
+        # Bouton Paramètres
+        settings_button = pygame.Rect(menu_x + 50, menu_y + 160, menu_width - 100, 60)
+        
+        settings_hover = settings_button.collidepoint(mouse_pos)
+        settings_color = (100, 150, 200) if settings_hover else (70, 100, 150)
+        
+        pygame.draw.rect(self.screen, settings_color, settings_button, border_radius=10)
+        pygame.draw.rect(self.screen, (255, 255, 255), settings_button, 3, border_radius=10)
+        
+        settings_text = button_font.render("PARAMÈTRES", True, (255, 255, 255))
+        settings_text_rect = settings_text.get_rect(center=settings_button.center)
+        self.screen.blit(settings_text, settings_text_rect)
+        
+        # Bouton Quitter
+        quit_button = pygame.Rect(menu_x + 50, menu_y + 240, menu_width - 100, 60)
+        
+        quit_hover = quit_button.collidepoint(mouse_pos)
+        quit_color = (200, 80, 80) if quit_hover else (150, 50, 50)
+        
+        pygame.draw.rect(self.screen, quit_color, quit_button, border_radius=10)
+        pygame.draw.rect(self.screen, (255, 255, 255), quit_button, 3, border_radius=10)
+        
+        quit_text = button_font.render("QUITTER", True, (255, 255, 255))
+        quit_text_rect = quit_text.get_rect(center=quit_button.center)
+        self.screen.blit(quit_text, quit_text_rect)
+        
+        # Instructions
+        info_font = pygame.font.Font(None, 24)
+        info_text = info_font.render("Appuyez sur ÉCHAP pour reprendre", True, (200, 200, 200))
+        info_rect = info_text.get_rect(center=(menu_x + menu_width // 2, menu_y + menu_height - 25))
+        self.screen.blit(info_text, info_rect)
