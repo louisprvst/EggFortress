@@ -989,6 +989,10 @@ class Game:
         if self.has_tree_at(x, y):
             return False
         
+        # Vérifier qu'il n'y a pas déjà un dinosaure
+        if self.get_dinosaur_at(x, y):
+            return False
+        
         distance = abs(dinosaur.x - x) + abs(dinosaur.y - y)
         return distance <= dinosaur.movement_range
     
