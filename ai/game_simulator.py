@@ -3,7 +3,6 @@ Simulateur d'état de jeu pour l'IA
 Permet de copier et simuler des actions sans affecter le jeu réel
 """
 
-import copy
 from Entities.Dinosaur import Dinosaur
 from Entities.Trap import Trap
 
@@ -68,7 +67,7 @@ class GameSimulator:
             new_trap.player = trap.player
             sim.traps.append(new_trap)
         
-        # Copier la grille (shallow copy suffisante)
+        # Copier la grille
         sim.grid = [row[:] for row in game.grid] if hasattr(game, 'grid') else []
         
         # Copier les spawn_eggs
@@ -105,7 +104,7 @@ class GameSimulator:
         
         try:
             if action_type == 'spawn':
-                # Spawner un dinosaure
+                # Faire spawn un dinosaure
                 x, y, dino_type = action['x'], action['y'], action['dino_type']
                 GameSimulator._simulate_spawn(game_state, x, y, dino_type)
             
@@ -127,10 +126,9 @@ class GameSimulator:
                 x, y = action['x'], action['y']
                 GameSimulator._simulate_trap(game_state, x, y)
             
-            # 'pass' : ne rien faire
+            # 'pass' = ne rien faire, passer son tour
             
         except Exception as e:
-            # En cas d'erreur, retourner l'état inchangé
             print(f"Erreur simulation: {e}")
         
         return game_state
