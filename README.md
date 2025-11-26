@@ -13,6 +13,7 @@ Un jeu de stratégie au tour par tour créé avec Pygame où deux joueurs s'affr
 ## Fonctionnalités
 
 - **Système de tour par tour** : Chaque joueur joue à son tour
+- **🤖 Mode IA** : Affrontez une IA intelligente utilisant l'algorithme Minimax
 - **Trois types de dinosaures** :
   - Type 1 (40 steaks) : Rapide, faible en vie, attaque moyenne
   - Type 2 (80 steaks) : Équilibré en vitesse, vie et attaque
@@ -34,11 +35,21 @@ Un jeu de stratégie au tour par tour créé avec Pygame où deux joueurs s'affr
 
 ## Lancement du jeu
 
+### Mode Joueur vs IA (Recommandé)
 ```bash
 python main.py
 ```
 
-Le jeu se lance avec un menu principal. Cliquez sur **JOUER** pour commencer une partie en mode 2 joueurs.
+Le jeu se lance avec un menu principal. Cliquez sur **JOUER** pour commencer une partie contre l'IA :
+- **Joueur Bleu (vous)** : Jouez en premier
+- **Joueur Rouge (IA)** : L'IA joue automatiquement après votre tour
+
+### Script de test dédié
+```bash
+python play_vs_ai.py
+```
+
+Lance directement une partie avec affichage des informations sur l'IA.
 
 ## Contrôles
 
@@ -86,15 +97,43 @@ Le jeu se lance avec un menu principal. Cliquez sur **JOUER** pour commencer une
 - Mouvement: 1 case
 - **Stratégie**: Défense d'œuf et attaque lourde
 
+## 🤖 Intelligence Artificielle
+
+L'IA utilise un **algorithme Minimax avec recherche à profondeur 2** :
+
+### Fonctionnement
+1. **Analyse** : Évalue toutes ses actions possibles (~30-50 par tour)
+2. **Anticipation** : Simule les meilleures réponses de l'adversaire
+3. **Décision** : Choisit l'action qui maximise son avantage après riposte
+
+### Stratégie
+- **Offensive** : Avance vers l'œuf ennemi et attaque stratégiquement
+- **Défensive** : Protège son propre œuf
+- **Adaptative** : Ajuste ses décisions selon l'état du jeu
+
+### Configuration
+Modifiez la difficulté dans `game.py` :
+```python
+# IA plus rapide (facile)
+self.ai = SearchAI(player=2, max_enemy_responses=5)
+
+# IA plus forte (difficile)
+self.ai = SearchAI(player=2, max_enemy_responses=12)
+```
+
+📖 Documentation complète : voir `ai/README.md`
+
 ## Structure du projet
 
-- `launcher.py` : Lanceur principal avec options
-- `main.py` : Point d'entrée original du jeu
-- `simple_main.py` : Version simplifiée pour test
-- `console_game.py` : Version console du jeu
+- `main.py` : Point d'entrée du jeu avec menu
+- `play_vs_ai.py` : Script dédié pour jouer contre l'IA
 - `game.py` : Logique principale du jeu
 - `entities.py` : Classes pour les œufs, dinosaures et pièges
 - `map_generator.py` : Génération de cartes aléatoires
+- `ai/` : Dossier contenant l'intelligence artificielle
+  - `search_ai.py` : IA avec algorithme Minimax
+  - `game_simulator.py` : Simulation d'états de jeu
+  - `heuristics.py` : Fonctions d'évaluation
 - `ui.py` : Interface utilisateur
 - `assets/` : Images et sons du jeu
 - `test_game.py` : Tests des modules
