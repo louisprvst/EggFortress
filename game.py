@@ -413,6 +413,8 @@ class Game:
                         self.attack(self.selected_dinosaur, target_entity)
                     elif target_type == 'egg':
                         self.attack_egg(self.selected_dinosaur, target_entity)
+                    elif target_type == 'spawn_egg':
+                        self.attack_spawn_egg(self.selected_dinosaur, target_entity)
                     
                     self.selected_dinosaur.has_moved = True
                     self.clear_selection()
@@ -564,7 +566,7 @@ class Game:
         """Calcule les cibles d'attaque possibles pour un dinosaure"""
         attack_targets = []
         
-        # Portée d'attaque = 1 case (adjacent)
+        # Portée d'attaque = 1 case (adjacent) pour dinosaures et œuf principal
         for dx in [-1, 0, 1]:
             for dy in [-1, 0, 1]:
                 if dx == 0 and dy == 0:
@@ -583,6 +585,19 @@ class Game:
                     target_egg = self.get_egg_at(target_x, target_y)
                     if target_egg and target_egg.player != dinosaur.player:
                         attack_targets.append(('egg', target_x, target_y, target_egg))
+        
+        # Portée d'attaque étendue pour les œufs de spawn (dans la zone de mouvement)
+        for dx in range(-dinosaur.movement_range, dinosaur.movement_range + 1):
+            for dy in range(-dinosaur.movement_range, dinosaur.movement_range + 1):
+                if abs(dx) + abs(dy) <= dinosaur.movement_range and (dx != 0 or dy != 0):
+                    target_x = dinosaur.x + dx
+                    target_y = dinosaur.y + dy
+                    
+                    if 0 <= target_x < self.logic_width and 0 <= target_y < self.logic_height:
+                        # Vérifier s'il y a un œuf de spawn ennemi
+                        for spawn_egg in self.spawn_eggs:
+                            if spawn_egg.x == target_x and spawn_egg.y == target_y and spawn_egg.player != dinosaur.player:
+                                attack_targets.append(('spawn_egg', target_x, target_y, spawn_egg))
         
         return attack_targets
     
@@ -638,6 +653,8 @@ class Game:
         
         if victim_type == 'dinosaur':
             message = f"{killer_name} A ÉLIMINÉ UN DINOSAURE !"
+        elif victim_type == 'spawn_egg':
+            message = f"{killer_name} A DÉTRUIT UN OEUF DE SPAWN !"
         else:
             message = f"{killer_name} A ATTAQUÉ L'OEUF !"
         
@@ -802,6 +819,24 @@ class Game:
         
         attacker.has_moved = True
         # Marquer qu'une action a été effectuée (utile pour la fin de tour)
+        self.action_taken = True
+    
+    def attack_spawn_egg(self, attacker, spawn_egg):
+        """Attaque un œuf de spawn ennemi"""
+        damage = attacker.attack_power
+        spawn_egg.take_damage(damage)
+        
+        # Si l'œuf de spawn est détruit, le retirer de la liste
+        if spawn_egg.health <= 0:
+            self.spawn_eggs.remove(spawn_egg)
+            self.show_kill_notification(attacker.player, 'spawn_egg')
+            # Donner des steaks pour avoir détruit un œuf de spawn
+            if attacker.player == 1:
+                self.player1_steaks += 15
+            else:
+                self.player2_steaks += 15
+        
+        attacker.has_moved = True
         self.action_taken = True
     
     def end_turn(self):
@@ -992,6 +1027,11 @@ class Game:
         # Vérifier qu'il n'y a pas déjà un dinosaure
         if self.get_dinosaur_at(x, y):
             return False
+        
+        # Vérifier qu'il n'y a pas d'œuf de spawn
+        for spawn_egg in self.spawn_eggs:
+            if spawn_egg.x == x and spawn_egg.y == y:
+                return False
         
         distance = abs(dinosaur.x - x) + abs(dinosaur.y - y)
         return distance <= dinosaur.movement_range

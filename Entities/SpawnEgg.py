@@ -15,6 +15,12 @@ class SpawnEgg(Entity):
         self.is_spawning = True  # L'œuf est en cours d'éclosion (attente en tours)
         self.is_hatching = False  # True lorsque l'animation d'éclosion a commencé
         self.hatch_animation_time = 0.0  # Temps d'animation en secondes
+        
+        # Points de vie = moitié de la vie du dinosaure correspondant
+        health_map = {1: 30, 2: 40, 3: 60}  # Moitié de 60, 80, 120
+        self.max_health = health_map.get(self.dino_type, 30)
+        self.health = self.max_health
+        
         self.load_image()
     
     def load_image(self):
@@ -46,6 +52,11 @@ class SpawnEgg(Entity):
     def is_ready_to_hatch(self):
         """Vérifie si l'œuf est prêt à éclore (animation terminée)"""
         return self.is_hatching and self.hatch_animation_time >= 0.5
+    
+    def take_damage(self, damage):
+        """L'œuf de spawn prend des dégâts"""
+        self.health = max(0, self.health - damage)
+    
     def on_turn_end(self):
         """Appelé par Game.end_turn() : avance d'un tour l'éclosion.
         Si le nombre de tours requis est atteint, démarre l'animation d'éclosion.
@@ -133,3 +144,36 @@ class SpawnEgg(Entity):
                 shadow_text = font.render("ÉCLOSION!", True, (0, 0, 0))
                 screen.blit(shadow_text, (text_rect.x + 2, text_rect.y + 2))
                 screen.blit(text, text_rect)
+        
+        # Dessiner la barre de vie
+        self.draw_health_bar(screen, cell_width, cell_height, board_offset_x, board_offset_y)
+    
+    def draw_health_bar(self, screen, cell_width, cell_height, board_offset_x=0, board_offset_y=0):
+        """Dessine une barre de vie pour l'œuf de spawn"""
+        health_ratio = self.health / self.max_health
+        
+        # Dimensions de la barre
+        bar_width = cell_width - 10
+        bar_height = 6
+        bar_x = self.x * cell_width + 5 + board_offset_x
+        bar_y = self.y * cell_height - 10 + board_offset_y
+        
+        # Fond de la barre (noir)
+        pygame.draw.rect(screen, (40, 40, 40), 
+                        (bar_x, bar_y, bar_width, bar_height))
+        
+        # Barre de vie colorée selon le pourcentage
+        health_width = int(bar_width * health_ratio)
+        if health_ratio > 0.7:
+            color = (0, 200, 255)  # Cyan pour les œufs
+        elif health_ratio > 0.3:
+            color = (255, 200, 0)  # Orange
+        else:
+            color = (255, 0, 0)  # Rouge
+        
+        pygame.draw.rect(screen, color, 
+                        (bar_x, bar_y, health_width, bar_height))
+        
+        # Bordure blanche
+        pygame.draw.rect(screen, (255, 255, 255), 
+                        (bar_x, bar_y, bar_width, bar_height), 1)
