@@ -1,4 +1,5 @@
 import pygame
+import threading
 import random
 from Entities.Dinosaur import Dinosaur
 from Entities.Egg import Egg
@@ -137,6 +138,21 @@ class Game:
         }
         
         self.init_game()
+        # Intelligence artificielle (joueur rouge)
+        self.ai_player = 2  # Le joueur contrôlé par l'IA
+        try:
+            self.ai = SearchAI(player=self.ai_player)
+        except Exception:
+            # En cas d'erreur d'import ou d'initialisation, laisser None pour éviter de casser
+            self.ai = None
+        self.ai_thinking = False
+        self.ai_action_delay = 0.3
+        self.ai_action_timer = 0
+        # Champs pour exécuter l'IA en arrière-plan sans bloquer le rendu
+        self.pending_ai_action = None
+        self.ai_ready = False
+        self.ai_thread_lock = threading.Lock()
+        self.ai_thread = None
     
     def init_game(self):
         """Initialise le jeu avec les œufs aux positions de base"""
@@ -284,6 +300,10 @@ class Game:
                         if sound:
                             sound.set_volume(self.sfx_volume)
             return  # Ne pas traiter les autres événements si les paramètres sont ouverts
+
+        # Si c'est le tour de l'IA, ignorer les entrées joueur
+        if self.current_player == getattr(self, 'ai_player', None):
+            return
         
         if event.type == pygame.MOUSEBUTTONDOWN:
             if event.button == 1:
@@ -623,6 +643,8 @@ class Game:
             'timer': 0,
             'duration': 2.0
         }
+        # Marquer qu'on vient d'afficher le pop-up pour forcer un rendu avant l'IA
+        self.popup_just_shown = True
     
     def update_turn_popup(self, delta_time):
         """Met à jour le pop-up de tour"""
@@ -879,6 +901,10 @@ class Game:
         popup_text = f"Tour {self.turn_number}\nAu tour du joueur {new_player_color} !"
         
         self.show_turn_popup(popup_text)
+        # Si c'est au tour de l'IA, permettre à l'IA de réfléchir immédiatement
+        if getattr(self, 'ai', None) is not None and self.current_player == getattr(self, 'ai_player', None):
+            # Pas de délai forcé : l'IA peut commencer à réfléchir tandis que le pop-up est affiché
+            self.ai_action_timer = 0
         
         # Réinitialiser les actions
         self.action_taken = False
@@ -898,22 +924,46 @@ class Game:
     
     def execute_ai_turn(self):
         """Fait jouer l'IA pour son tour"""
+        # Méthode maintenue pour compatibilité (exécution synchrone)
         try:
-            # L'IA choisit une action
             action = self.ai.choose_action(self)
-            
             if action:
-                # Exécuter l'action choisie
                 self.execute_ai_action(action)
             else:
-                # Aucune action possible, passer le tour
                 self.end_turn()
         except Exception as e:
             print(f"Erreur IA: {e}")
-            # En cas d'erreur, passer le tour
             self.end_turn()
         finally:
             self.ai_thinking = False
+
+    def _ai_worker(self):
+        """Worker exécuté dans un thread pour calculer l'action de l'IA sans bloquer l'UI."""
+        try:
+            action = None
+            # Log début de réflexion IA
+            try:
+                print(f"=== IA Joueur {getattr(self, 'ai_player', '?')} commence réflexion ===")
+            except Exception:
+                pass
+            try:
+                action = self.ai.choose_action(self)
+            except Exception as e:
+                print(f"Erreur IA (thread): {e}")
+                action = None
+            # Log fin de réflexion IA
+            try:
+                print(f"=== IA Joueur {getattr(self, 'ai_player', '?')} a réfléchi — action: {action} ===")
+            except Exception:
+                pass
+            with self.ai_thread_lock:
+                self.pending_ai_action = action
+                self.ai_ready = True
+        except Exception as e:
+            print(f"Erreur inattendue worker IA: {e}")
+            with self.ai_thread_lock:
+                self.pending_ai_action = None
+                self.ai_ready = True
     
     def execute_ai_action(self, action):
         """Exécute une action choisie par l'IA"""
@@ -1234,6 +1284,50 @@ class Game:
         # Vérifier les conditions de victoire
         if not self.game_over:
             self.check_victory()
+
+        # Si c'est le tour de l'IA, déclencher sa réflexion / action (en arrière-plan)
+        if (not self.game_over and
+            getattr(self, 'ai', None) is not None and
+            self.current_player == getattr(self, 'ai_player', None)):
+
+            # Reset du flag popup (on veut que le pop-up ait été créé, mais on ne bloque pas)
+            if getattr(self, 'popup_just_shown', False):
+                self.popup_just_shown = False
+
+            # Décrémenter le timer d'action IA
+            self.ai_action_timer = max(0, getattr(self, 'ai_action_timer', 0) - delta_time)
+
+            # Si l'IA n'est pas en train de réfléchir et que le timer est écoulé, lancer son worker
+            if not getattr(self, 'ai_thinking', False) and self.ai_action_timer <= 0 and self.ai_thread is None:
+                self.ai_thinking = True
+                # Démarrer un thread pour calculer l'action sans bloquer le rendu
+                try:
+                    self.ai_thread = threading.Thread(target=self._ai_worker, daemon=True)
+                    self.ai_thread.start()
+                except Exception as e:
+                    print(f"Erreur démarrage thread IA: {e}")
+                    self.ai_thinking = False
+
+            # Si le worker a fini et a fourni une action, l'exécuter sur le thread principal
+            if getattr(self, 'ai_ready', False):
+                with self.ai_thread_lock:
+                    action = self.pending_ai_action
+                    # Reset des drapeaux
+                    self.pending_ai_action = None
+                    self.ai_ready = False
+                    self.ai_thread = None
+
+                # Exécuter l'action récupérée
+                try:
+                    if action:
+                        self.execute_ai_action(action)
+                    else:
+                        # Pas d'action => passer le tour
+                        self.end_turn()
+                except Exception as e:
+                    print(f"Erreur lors de l'exécution de l'action IA: {e}")
+                finally:
+                    self.ai_thinking = False
     
     def draw(self):
         """Dessine le jeu"""
