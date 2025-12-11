@@ -277,7 +277,7 @@ class MenuScreen:
     def draw_map_selection(self):
         """Dessine l'écran de sélection de map"""
         # Fond dégradé
-        self.draw_gradient_background()
+        self.draw_background()
         
         # Titre
         title_text = self.title_font.render("CHOIX DE LA MAP", True, (255, 255, 255))
