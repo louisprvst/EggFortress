@@ -9,7 +9,7 @@ from ui import UI
 from ai.search_ai import SearchAI
 
 class Game:
-    def __init__(self, screen):
+    def __init__(self, screen, map_name="default"):
         self.screen = screen
         self.screen_width = screen.get_width()
         self.screen_height = screen.get_height()
@@ -50,7 +50,7 @@ class Game:
         self.spawn_eggs = []
         
         # Map
-        self.map_generator = MapGenerator(width=16, height=12, visual_width=32, visual_height=24)
+        self.map_generator = MapGenerator(width=16, height=12, visual_width=32, visual_height=24, map_name=map_name)
         self.grid = self.map_generator.generate_map()
         self.visual_base, self.visual_elements = self.map_generator.generate_visual_map()
         
