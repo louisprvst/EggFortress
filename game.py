@@ -1,5 +1,6 @@
 import pygame
 import random
+import sys
 from Entities.Dinosaur import Dinosaur
 from Entities.Egg import Egg
 from Entities.SpawnEgg import SpawnEgg
@@ -38,6 +39,7 @@ class Game:
         self.turn_number = 1
         self.game_over = False
         self.winner = None
+        self.return_to_menu = False
         
         # Ressources des joueurs
         self.player1_steaks = 100
@@ -136,6 +138,17 @@ class Game:
             'duration': 3.0
         }
         
+        # Animation d'attaque
+        self.attack_animation = {
+            'active': False,
+            'attacker_pos': None,
+            'target_pos': None,
+            'timer': 0,
+            'duration': 0.8,
+            'flash_timer': 0,
+            'particles': []
+        }
+        
         # IA pour le joueur 2 (rouge)
         self.ai_player = 2
         self.ai = SearchAI(player=2, max_enemy_responses=8, verbose=True)
@@ -210,8 +223,18 @@ class Game:
     
     def handle_event(self, event):
         if self.game_over:
-            if event.type == pygame.KEYDOWN and event.key == pygame.K_r:
-                self.restart_game()
+            if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                mouse_pos = event.pos
+                # Calculer le rectangle du bouton retour au menu
+                button_width = 350
+                button_height = 80
+                button_x = (self.screen_width - button_width) // 2
+                button_y = (self.screen_height // 2) + 150
+                button_rect = pygame.Rect(button_x, button_y, button_width, button_height)
+                
+                if button_rect.collidepoint(mouse_pos):
+                    # Signaler qu'on veut retourner au menu
+                    self.return_to_menu = True
             return
         
         # Gestion du menu pause
@@ -397,6 +420,7 @@ class Game:
         # Bouton Piège
         elif start_x + button_spacing * 3 <= mouse_x <= start_x + button_spacing * 3 + button_width and button_y <= mouse_y <= button_y + button_height:
             self.action_mode = 'trap'
+            self.spawn_positions = []  # Effacer les zones de spawn des dinos
     
     def handle_grid_click(self, grid_x, grid_y):
         """Gère les clics sur la grille de jeu"""
@@ -763,6 +787,59 @@ class Game:
         # Marquer qu'une action a été effectuée (utile pour la fin de tour)
         self.action_taken = True
     
+    def start_attack_animation(self, attacker, target):
+        """Démarre l'animation d'attaque"""
+        import math
+        import random
+        
+        self.attack_animation['active'] = True
+        self.attack_animation['attacker_pos'] = (attacker.x, attacker.y)
+        self.attack_animation['target_pos'] = (target.x, target.y)
+        self.attack_animation['timer'] = 0
+        self.attack_animation['flash_timer'] = 0.15  # Flash pendant 0.15s
+        
+        # Créer des particules le long de la trajectoire
+        start_x = attacker.x * self.cell_width + self.cell_width // 2 + self.board_offset_x
+        start_y = attacker.y * self.cell_height + self.cell_height // 2 + self.board_offset_y
+        end_x = target.x * self.cell_width + self.cell_width // 2 + self.board_offset_x
+        end_y = target.y * self.cell_height + self.cell_height // 2 + self.board_offset_y
+        
+        # Générer des particules le long de la trajectoire
+        self.attack_animation['particles'] = []
+        num_particles = 15
+        for i in range(num_particles):
+            t = i / num_particles
+            x = start_x + (end_x - start_x) * t
+            y = start_y + (end_y - start_y) * t
+            # Ajouter un peu de variation aléatoire
+            x += random.randint(-5, 5)
+            y += random.randint(-5, 5)
+            # Couleur selon le joueur de l'attaquant
+            color = (255, 100, 100) if attacker.player == 2 else (100, 100, 255)
+            self.attack_animation['particles'].append({
+                'x': x,
+                'y': y,
+                'size': random.randint(3, 7),
+                'color': color,
+                'lifetime': 0.3 + random.random() * 0.2
+            })
+    
+    def update_attack_animation(self, delta_time):
+        """Met à jour l'animation d'attaque"""
+        self.attack_animation['timer'] += delta_time
+        self.attack_animation['flash_timer'] -= delta_time
+        
+        # Mettre à jour les particules
+        for particle in self.attack_animation['particles'][:]:
+            particle['lifetime'] -= delta_time
+            if particle['lifetime'] <= 0:
+                self.attack_animation['particles'].remove(particle)
+        
+        # Terminer l'animation après la durée
+        if self.attack_animation['timer'] >= self.attack_animation['duration']:
+            self.attack_animation['active'] = False
+            self.attack_animation['particles'] = []
+    
     def check_traps(self, dinosaur):
         """Vérifie si le dinosaure marche sur un piège ennemi"""
         for trap in self.traps[:]:
@@ -808,6 +885,9 @@ class Game:
     
     def attack(self, attacker, defender):
         """Gère le combat entre deux dinosaures - seul le défenseur prend des dégâts"""
+        # Démarrer l'animation d'attaque
+        self.start_attack_animation(attacker, defender)
+        
         damage = attacker.attack_power
         defender.take_damage(damage)
         
@@ -826,6 +906,9 @@ class Game:
     
     def attack_egg(self, attacker, egg):
         """Attaque un œuf ennemi"""
+        # Démarrer l'animation d'attaque
+        self.start_attack_animation(attacker, egg)
+        
         damage = attacker.attack_power
         egg.take_damage(damage)
         
@@ -837,6 +920,9 @@ class Game:
     
     def attack_spawn_egg(self, attacker, spawn_egg):
         """Attaque un œuf de spawn ennemi"""
+        # Démarrer l'animation d'attaque
+        self.start_attack_animation(attacker, spawn_egg)
+        
         damage = attacker.attack_power
         spawn_egg.take_damage(damage)
         
@@ -1114,6 +1200,10 @@ class Game:
         # Mettre à jour l'animation de déplacement
         self.update_move_animation(delta_time)
         
+        # Mettre à jour l'animation d'attaque
+        if self.attack_animation['active']:
+            self.update_attack_animation(delta_time)
+        
         # Mettre à jour les œufs de spawn
         spawn_eggs_to_remove = []
         for i, spawn_egg in enumerate(self.spawn_eggs):
@@ -1238,9 +1328,9 @@ class Game:
                         if real_target:
                             self.attack(real_attacker, real_target)
 
-                    pygame.time.wait(200)
+                    # Attendre que l'animation d'attaque se termine
                     self.ai_thinking = False
-                    self.ai_action_timer = 0.3
+                    self.ai_action_timer = 1.0  # Augmenté pour laisser l'animation se jouer
 
         elif action_type == 'trap':
             x, y = action.get('x'), action.get('y')
@@ -1277,8 +1367,16 @@ class Game:
             self.draw_attack_targets()
             self.draw_attack_mode_instruction()
         
+        # Dessiner le message d'instruction pour les pièges
+        if self.action_mode == 'trap':
+            self.draw_trap_mode_instruction()
+        
         # Dessiner les positions de spawn possibles
         self.draw_spawn_positions()
+        
+        # Dessiner l'animation d'attaque
+        if self.attack_animation['active']:
+            self.draw_attack_animation()
         
         # Dessiner le pop-up de changement de tour
         if self.turn_popup['active']:
@@ -1299,6 +1397,10 @@ class Game:
         # Dessiner le menu pause si le jeu est en pause
         if self.paused:
             self.draw_pause_menu()
+        
+        # Dessiner l'écran de victoire si le jeu est terminé
+        if self.game_over:
+            self.draw_victory_screen()
     
     def draw_grid(self):
         """Dessine la grille de jeu avec des cases carrées et des textures complètes"""
@@ -1476,7 +1578,7 @@ class Game:
         width = 400
         height = 60
         x = (self.screen_width - width) // 2
-        y = 30
+        y = 10  # Plus haut
         
         instruction_surface = pygame.Surface((width, height))
         instruction_surface.set_alpha(230)
@@ -1495,19 +1597,107 @@ class Game:
         self.screen.blit(shadow, shadow_rect)
         self.screen.blit(text, text_rect)
     
+    def draw_attack_animation(self):
+        """Dessine l'animation d'attaque avec particules et effets"""
+        import math
+        
+        # Dessiner les particules
+        for particle in self.attack_animation['particles']:
+            # Alpha basé sur la durée de vie restante
+            alpha = int(255 * (particle['lifetime'] / 0.5))
+            alpha = max(0, min(255, alpha))
+            
+            # Créer une surface pour la particule avec transparence
+            particle_surface = pygame.Surface((particle['size'] * 2, particle['size'] * 2), pygame.SRCALPHA)
+            color_with_alpha = (*particle['color'], alpha)
+            pygame.draw.circle(particle_surface, color_with_alpha, 
+                             (particle['size'], particle['size']), particle['size'])
+            
+            self.screen.blit(particle_surface, 
+                           (int(particle['x'] - particle['size']), 
+                            int(particle['y'] - particle['size'])))
+        
+        # Flash sur l'attaquant
+        if self.attack_animation['flash_timer'] > 0:
+            attacker_x, attacker_y = self.attack_animation['attacker_pos']
+            flash_rect = pygame.Rect(
+                self.board_offset_x + attacker_x * self.cell_width,
+                self.board_offset_y + attacker_y * self.cell_height,
+                self.cell_width, self.cell_height
+            )
+            flash_surface = pygame.Surface((self.cell_width, self.cell_height), pygame.SRCALPHA)
+            flash_alpha = int(200 * (self.attack_animation['flash_timer'] / 0.15))
+            flash_surface.fill((255, 255, 255, flash_alpha))
+            self.screen.blit(flash_surface, flash_rect)
+        
+        # Ligne d'impact
+        if self.attack_animation['timer'] < 0.2:  # Pendant les premières 0.2 secondes
+            attacker_x, attacker_y = self.attack_animation['attacker_pos']
+            target_x, target_y = self.attack_animation['target_pos']
+            
+            start_x = self.board_offset_x + attacker_x * self.cell_width + self.cell_width // 2
+            start_y = self.board_offset_y + attacker_y * self.cell_height + self.cell_height // 2
+            end_x = self.board_offset_x + target_x * self.cell_width + self.cell_width // 2
+            end_y = self.board_offset_y + target_y * self.cell_height + self.cell_height // 2
+            
+            # Ligne d'impact principale
+            pygame.draw.line(self.screen, (255, 200, 0), (start_x, start_y), (end_x, end_y), 4)
+            # Ligne blanche au centre pour plus d'effet
+            pygame.draw.line(self.screen, (255, 255, 255), (start_x, start_y), (end_x, end_y), 2)
+    
+    def draw_trap_mode_instruction(self):
+        """Affiche un message indiquant de cliquer pour placer un piège"""
+        width = 550
+        height = 60
+        x = (self.screen_width - width) // 2
+        y = 10  # Plus haut
+        
+        instruction_surface = pygame.Surface((width, height))
+        instruction_surface.set_alpha(230)
+        instruction_surface.fill((139, 90, 43))  # Couleur marron comme le bouton piège
+        self.screen.blit(instruction_surface, (x, y))
+        
+        pygame.draw.rect(self.screen, (180, 120, 60), (x, y, width, height), 4)
+        pygame.draw.rect(self.screen, (255, 255, 255), (x + 2, y + 2, width - 4, height - 4), 2)
+        
+        font = pygame.font.Font(None, 32)
+        text = font.render("CLIQUEZ SUR LA CASE O\u00d9 PLACER LE PI\u00c8GE", True, (255, 255, 255))
+        text_rect = text.get_rect(center=(x + width // 2, y + height // 2))
+        
+        shadow = font.render("CLIQUEZ SUR LA CASE O\u00d9 PLACER LE PI\u00c8GE", True, (0, 0, 0))
+        shadow_rect = shadow.get_rect(center=(text_rect.centerx + 2, text_rect.centery + 2))
+        self.screen.blit(shadow, shadow_rect)
+        self.screen.blit(text, text_rect)
+    
     def draw_spawn_positions(self):
-        """Dessine les positions de spawn possibles en bleu"""
+        """Dessine les positions de spawn possibles avec la couleur du bouton sélectionné"""
+        # Couleurs selon le type de dino (mêmes que les boutons dans ui.py)
+        dino_colors = {
+            1: (50, 200, 50),    # RAPIDE - vert
+            2: (200, 150, 50),   # ÉQUILIBRÉ - orange
+            3: (200, 50, 50)     # TANK - rouge
+        }
+        
+        # Récupérer la couleur selon le type de spawn sélectionné
+        if hasattr(self, 'spawn_type') and self.spawn_type in dino_colors:
+            highlight_color = dino_colors[self.spawn_type]
+            border_color = tuple(min(255, c + 55) for c in highlight_color)
+        else:
+            # Couleur par défaut (vert) si pas de type défini
+            highlight_color = (0, 255, 100)
+            border_color = (0, 255, 150)
+        
         for x, y in self.spawn_positions:
             rect = pygame.Rect(self.board_offset_x + x * self.cell_width, 
                              self.board_offset_y + y * self.cell_height, 
                              self.cell_width, self.cell_height)
-            # Surface semi-transparente bleue
+            # Surface semi-transparente avec la couleur du bouton
             s = pygame.Surface((self.cell_width, self.cell_height))
             s.set_alpha(100)
-            s.fill((0, 255, 100))
+            s.fill(highlight_color)
             self.screen.blit(s, (self.board_offset_x + x * self.cell_width, 
                                self.board_offset_y + y * self.cell_height))
-            pygame.draw.rect(self.screen, (0, 255, 150), rect, 2)
+            pygame.draw.rect(self.screen, border_color, rect, 2)
     
     def draw_turn_popup(self):
         """Dessine le pop-up de changement de tour"""
@@ -1530,7 +1720,7 @@ class Game:
         height = int(base_height * scale)
         
         x = (self.screen_width - width) // 2
-        y = (self.screen_height - height) // 2 - 50  # Un peu plus haut
+        y = 80  # Positionné en haut de l'écran
         
         # Fond avec dégradé
         popup_surface = pygame.Surface((width, height))
@@ -1606,7 +1796,7 @@ class Game:
         height = int(base_height * scale)
         
         x = (self.screen_width - width) // 2
-        y = 100  # Position fixe en haut
+        y = 80  # Position fixe en haut
         
         # Fond avec dégradé rouge (erreur)
         popup_surface = pygame.Surface((width, height))
@@ -1644,6 +1834,108 @@ class Game:
         # Texte principal
         self.screen.blit(text, text_rect)
     
+    def draw_victory_screen(self):
+        """Dessine l'écran de victoire avec le gagnant et un bouton retour au menu"""
+        # Overlay semi-transparent
+        overlay = pygame.Surface((self.screen_width, self.screen_height))
+        overlay.set_alpha(200)
+        overlay.fill((0, 0, 0))
+        self.screen.blit(overlay, (0, 0))
+        
+        # Couleurs selon le joueur gagnant
+        if self.winner == 1:
+            title_color = (100, 150, 255)  # Bleu
+            player_name = "LE JOUEUR BLEU"
+            bg_color1 = (20, 50, 120)
+            bg_color2 = (50, 100, 200)
+        else:
+            title_color = (255, 100, 150)  # Rouge
+            player_name = "LE JOUEUR ROUGE"
+            bg_color1 = (120, 20, 50)
+            bg_color2 = (200, 50, 100)
+        
+        # Grand panneau de victoire
+        panel_width = 800
+        panel_height = 500
+        panel_x = (self.screen_width - panel_width) // 2
+        panel_y = (self.screen_height - panel_height) // 2
+        
+        # Fond avec dégradé
+        panel_surface = pygame.Surface((panel_width, panel_height))
+        for i in range(panel_height):
+            ratio = i / panel_height
+            r = int(bg_color1[0] * (1 - ratio) + bg_color2[0] * ratio)
+            g = int(bg_color1[1] * (1 - ratio) + bg_color2[1] * ratio)
+            b = int(bg_color1[2] * (1 - ratio) + bg_color2[2] * ratio)
+            pygame.draw.line(panel_surface, (r, g, b), (0, i), (panel_width, i))
+        
+        self.screen.blit(panel_surface, (panel_x, panel_y))
+        
+        # Bordure dorée
+        pygame.draw.rect(self.screen, (255, 215, 0), (panel_x, panel_y, panel_width, panel_height), 8)
+        pygame.draw.rect(self.screen, (255, 255, 255), (panel_x + 6, panel_y + 6, panel_width - 12, panel_height - 12), 3)
+        
+        # Texte "VICTOIRE!"
+        victory_font = pygame.font.Font(None, 120)
+        victory_text = victory_font.render("VICTOIRE !", True, (255, 215, 0))
+        victory_rect = victory_text.get_rect(center=(self.screen_width // 2, panel_y + 100))
+        
+        # Ombre du titre
+        victory_shadow = victory_font.render("VICTOIRE !", True, (0, 0, 0))
+        shadow_rect = victory_shadow.get_rect(center=(victory_rect.centerx + 4, victory_rect.centery + 4))
+        self.screen.blit(victory_shadow, shadow_rect)
+        self.screen.blit(victory_text, victory_rect)
+        
+        # Nom du gagnant
+        winner_font = pygame.font.Font(None, 80)
+        winner_text = winner_font.render(player_name, True, title_color)
+        winner_rect = winner_text.get_rect(center=(self.screen_width // 2, panel_y + 200))
+        
+        # Ombre du gagnant
+        winner_shadow = winner_font.render(player_name, True, (0, 0, 0))
+        winner_shadow_rect = winner_shadow.get_rect(center=(winner_rect.centerx + 3, winner_rect.centery + 3))
+        self.screen.blit(winner_shadow, winner_shadow_rect)
+        self.screen.blit(winner_text, winner_rect)
+        
+        # Sous-titre
+        subtitle_font = pygame.font.Font(None, 60)
+        subtitle_text = subtitle_font.render("A REMPORTÉ LA PARTIE", True, (255, 255, 255))
+        subtitle_rect = subtitle_text.get_rect(center=(self.screen_width // 2, panel_y + 270))
+        
+        subtitle_shadow = subtitle_font.render("A REMPORTÉ LA PARTIE", True, (0, 0, 0))
+        subtitle_shadow_rect = subtitle_shadow.get_rect(center=(subtitle_rect.centerx + 2, subtitle_rect.centery + 2))
+        self.screen.blit(subtitle_shadow, subtitle_shadow_rect)
+        self.screen.blit(subtitle_text, subtitle_rect)
+        
+        # Bouton retour au menu
+        button_width = 350
+        button_height = 80
+        button_x = (self.screen_width - button_width) // 2
+        button_y = panel_y + 370
+        
+        # Vérifier si la souris est sur le bouton
+        mouse_pos = pygame.mouse.get_pos()
+        button_rect = pygame.Rect(button_x, button_y, button_width, button_height)
+        is_hover = button_rect.collidepoint(mouse_pos)
+        
+        # Couleur du bouton selon le survol
+        if is_hover:
+            button_color = (255, 215, 0)
+            text_color = (0, 0, 0)
+        else:
+            button_color = (200, 170, 0)
+            text_color = (255, 255, 255)
+        
+        # Dessiner le bouton
+        pygame.draw.rect(self.screen, button_color, button_rect, border_radius=10)
+        pygame.draw.rect(self.screen, (255, 255, 255), button_rect, 4, border_radius=10)
+        
+        # Texte du bouton
+        button_font = pygame.font.Font(None, 50)
+        button_text = button_font.render("RETOUR AU MENU", True, text_color)
+        button_text_rect = button_text.get_rect(center=button_rect.center)
+        self.screen.blit(button_text, button_text_rect)
+    
     def draw_kill_notification(self):
         """Dessine la notification d'élimination au centre de l'écran"""
         # Animation d'échelle selon le temps
@@ -1669,7 +1961,7 @@ class Game:
         height = int(base_height * final_scale)
         
         x = (self.screen_width - width) // 2
-        y = (self.screen_height - height) // 2
+        y = 80  # Positionné en haut de l'écran
         
         # Fond avec dégradé doré/orange (élimination)
         popup_surface = pygame.Surface((width, height))

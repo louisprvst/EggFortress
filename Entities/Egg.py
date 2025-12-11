@@ -74,11 +74,11 @@ class Egg(Entity):
             bar_height = 35
             health_bar_image = pygame.transform.scale(health_bar_image, (bar_width, bar_height))
             
-            # Position selon le joueur
+            # Position selon le joueur - décalé de 65px depuis la position d'origine
             if self.player == 1:  # Bleu - à gauche
-                bar_x = self.x * cell_width - bar_width - 15 + board_offset_x
+                bar_x = self.x * cell_width - bar_width - 15 + board_offset_x - 65
             else:  # Rouge - à droite
-                bar_x = self.x * cell_width + cell_width + 15 + board_offset_x
+                bar_x = self.x * cell_width + cell_width + 15 + board_offset_x + 65
             
             bar_y = self.y * cell_height + (cell_height - bar_height) // 2 + board_offset_y
             

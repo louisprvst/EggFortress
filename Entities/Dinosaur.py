@@ -57,11 +57,6 @@ class Dinosaur(Entity):
 
         self.draw_health_bar_pixelart(screen, cell_width, cell_height, board_offset_x, board_offset_y)
 
-        if self.has_moved:
-            pygame.draw.circle(screen, (128, 128, 128), 
-                             (int(x_pos + cell_width - 10), 
-                              int(y_pos + 10)), 5)
-
         if self.immobilized_turns > 0:
             pygame.draw.rect(screen, (255, 0, 0), 
                            (int(x_pos + 5), int(y_pos + 5), 

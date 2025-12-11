@@ -34,24 +34,16 @@ class SearchAI(BaseAI):
         Returns:
             dict: Action à effectuer
         """
-        if self.verbose:
-            print(f"\n=== IA Joueur {self.player} réfléchit ===")
-        
         # Générer toutes les actions possibles
         possible_actions = self.generate_actions(game, self.player)
         
         if not possible_actions or len(possible_actions) == 0:
-            if self.verbose:
-                print("Aucune action possible, passe le tour")
             return {'type': 'pass'}
         
         # Filtrer l'action "pass" si d'autres actions existent
         non_pass_actions = [a for a in possible_actions if a['type'] != 'pass']
         if non_pass_actions:
             possible_actions = non_pass_actions
-        
-        if self.verbose:
-            print(f"{len(possible_actions)} actions possibles")
         
         best_action = None
         best_score = float('-inf')
@@ -92,9 +84,6 @@ class SearchAI(BaseAI):
             if min_score > best_score:
                 best_score = min_score
                 best_action = action
-        
-        if self.verbose and best_action:
-            print(f"Meilleure action: {best_action['type']} (score: {best_score:.1f})")
         
         return best_action if best_action else {'type': 'pass'}
     
