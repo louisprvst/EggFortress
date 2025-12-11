@@ -153,7 +153,7 @@ class Game:
         self.ai_player = 2
         self.ai = SearchAI(player=2, max_enemy_responses=8, verbose=True)
         self.ai_thinking = False
-        self.ai_action_delay = 1.0  # Délai avant que l'IA joue (en secondes)
+        self.ai_action_delay = 1.5  # Délai avant que l'IA joue (en secondes)
         self.ai_action_timer = 0
         
         self.init_game()
@@ -1281,7 +1281,7 @@ class Game:
             if x is not None and y is not None and dino_type is not None:
                 self.spawn_dinosaur(x, y, dino_type)
                 self.spawn_action_done = True
-                self.auto_end_turn_time = pygame.time.get_ticks() + 1500
+                self.auto_end_turn_time = pygame.time.get_ticks() + 2000
 
         elif action_type == 'move':
             dinosaur = action.get('dinosaur')
@@ -1297,10 +1297,9 @@ class Game:
 
                 if real_dino and not real_dino.has_moved:
                     self.move_dinosaur(real_dino, target_x, target_y)
-                    # petit délai visuel
-                    pygame.time.wait(200)
+                    # Délai pour voir le mouvement
                     self.ai_thinking = False
-                    self.ai_action_timer = 0.3
+                    self.ai_action_timer = 0.8
 
         elif action_type == 'attack':
             attacker = action.get('attacker')
@@ -1330,7 +1329,7 @@ class Game:
 
                     # Attendre que l'animation d'attaque se termine
                     self.ai_thinking = False
-                    self.ai_action_timer = 1.0  # Augmenté pour laisser l'animation se jouer
+                    self.ai_action_timer = 1.2  # Délai pour voir l'animation complète
 
         elif action_type == 'trap':
             x, y = action.get('x'), action.get('y')
