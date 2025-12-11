@@ -1,8 +1,3 @@
-#!/usr/bin/env python3
-"""
-Menu principal pour Egg Fortress
-"""
-
 import pygame
 import os
 import math
@@ -14,7 +9,35 @@ class MenuScreen:
         self.screen = screen
         self.screen_width = screen.get_width()
         self.screen_height = screen.get_height()
-        
+
+        # Charger l'image de fond
+        self.background_image = None
+        try:
+            bg_path = "assets/images/background.png"
+            if os.path.exists(bg_path):
+                self.background_image = pygame.image.load(bg_path)
+                # Redimensionner à la taille de l'écran
+                self.background_image = pygame.transform.scale(
+                    self.background_image, 
+                    (self.screen_width, self.screen_height)
+                )
+        except Exception as e:
+            print(f"Impossible de charger l'image de fond: {e}")
+
+        # Charger le logo
+        self.logo_image = None
+        try:
+            logo_path = "assets/images/eggfortress.png"
+            if os.path.exists(logo_path):
+                logo = pygame.image.load(logo_path).convert_alpha()
+                logo_width = 500
+                # Calculer la hauteur pour garder les proportions
+                aspect_ratio = logo.get_height() / logo.get_width()
+                logo_height = int(logo_width * aspect_ratio)
+                self.logo_image = pygame.transform.smoothscale(logo, (logo_width, logo_height))
+        except Exception as e:
+            print(f"Impossible de charger le logo: {e}")
+
         # Charger le son de clic du menu
         self.click_sound = None
         try:
@@ -137,24 +160,23 @@ class MenuScreen:
     def draw_main_menu(self):
         """Dessine le menu principal"""
         # Fond dégradé
-        self.draw_gradient_background()
+        self.draw_background()
         
-        # Titre principal
-        title_text = self.title_font.render("EGG FORTRESS", True, (255, 255, 255))
-        title_shadow = self.title_font.render("EGG FORTRESS", True, (0, 0, 0))
-        
-        title_rect = title_text.get_rect(center=(self.screen_width//2, 150))
-        shadow_rect = title_rect.copy()
-        shadow_rect.x += 4
-        shadow_rect.y += 4
-        
-        self.screen.blit(title_shadow, shadow_rect)
-        self.screen.blit(title_text, title_rect)
-        
-        # Sous-titre
-        subtitle = self.text_font.render("Défendez votre œuf ! Détruisez celui de l'ennemi !", True, (200, 200, 200))
-        subtitle_rect = subtitle.get_rect(center=(self.screen_width//2, 200))
-        self.screen.blit(subtitle, subtitle_rect)
+        # Logo principal
+        if self.logo_image:
+            logo_rect = self.logo_image.get_rect(center=(self.screen_width//2, 200))
+            self.screen.blit(self.logo_image, logo_rect)
+        else:
+            title_text = self.title_font.render("EGG FORTRESS", True, (255, 255, 255))
+            title_shadow = self.title_font.render("EGG FORTRESS", True, (0, 0, 0))
+            
+            title_rect = title_text.get_rect(center=(self.screen_width//2, 150))
+            shadow_rect = title_rect.copy()
+            shadow_rect.x += 4
+            shadow_rect.y += 4
+            
+            self.screen.blit(title_shadow, shadow_rect)
+            self.screen.blit(title_text, title_rect)
         
         # Boutons
         self.draw_button("play", "JOUER", (0, 200, 0), (0, 255, 0))
@@ -164,7 +186,7 @@ class MenuScreen:
     def draw_game_mode_selection(self):
         """Dessine l'écran de sélection du mode de jeu"""
         # Fond dégradé
-        self.draw_gradient_background()
+        self.draw_background()
 
         # Titre
         title_text = self.title_font.render("MODE DE JEU", True, (255, 255, 255))
@@ -219,7 +241,7 @@ class MenuScreen:
     
     def draw_settings(self):
         """Dessine le menu des paramètres"""
-        self.draw_gradient_background()
+        self.draw_background()
         
         # Titre
         title = self.title_font.render("PARAMÈTRES", True, (255, 255, 255))
@@ -292,7 +314,7 @@ class MenuScreen:
     
     def draw_how_to_play(self):
         """Dessine l'écran des règles"""
-        self.draw_gradient_background()
+        self.draw_background()
         
         # Titre
         title = self.title_font.render("COMMENT JOUER", True, (255, 255, 255))
@@ -350,15 +372,17 @@ class MenuScreen:
         # Bouton retour
         self.draw_button("back", "RETOUR", (150, 150, 150), (200, 200, 200))
     
-    def draw_gradient_background(self):
-        """Dessine un fond dégradé"""
-        for y in range(self.screen_height):
-            ratio = y / self.screen_height
-            # Dégradé du bleu foncé au noir
-            r = int(20 * (1 - ratio))
-            g = int(30 * (1 - ratio))
-            b = int(60 * (1 - ratio))
-            pygame.draw.line(self.screen, (r, g, b), (0, y), (self.screen_width, y))
+    def draw_background(self):
+        """Dessine le fond du menu"""
+        if self.background_image:
+            self.screen.blit(self.background_image, (0, 0))
+        else:
+            for y in range(self.screen_height):
+                ratio = y / self.screen_height
+                r = int(20 * (1 - ratio))
+                g = int(30 * (1 - ratio))
+                b = int(60 * (1 - ratio))
+                pygame.draw.line(self.screen, (r, g, b), (0, y), (self.screen_width, y))
     
     def draw_button(self, button_name, text, base_color, hover_color):
         """Dessine un bouton avec effet de survol"""
