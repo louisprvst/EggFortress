@@ -41,7 +41,8 @@ class MenuScreen:
         self.text_font = pygame.font.Font(None, 32)
         
         # États du menu
-        self.current_screen = "main"  # "main", "settings", "how_to_play"
+        self.current_screen = "main"  # "main", "map_selection", "settings", "how_to_play"
+        self.selected_map = "default"
         
         # Animation
         self.time = 0
@@ -82,7 +83,7 @@ class MenuScreen:
                 if self.buttons["play"].collidepoint(mouse_pos):
                     if self.click_sound:
                         self.click_sound.play()
-                    return "start_game"
+                    self.current_screen = "map_selection"
                 elif self.buttons["settings"].collidepoint(mouse_pos):
                     if self.click_sound:
                         self.click_sound.play()
@@ -91,6 +92,38 @@ class MenuScreen:
                     if self.click_sound:
                         self.click_sound.play()
                     return "quit"
+            
+            elif self.current_screen == "map_selection":
+                # Boutons de sélection de map
+                map_button_width = 250
+                map_button_height = 200
+                spacing = 40
+                total_width = map_button_width * 3 + spacing * 2
+                start_x = self.screen_width // 2 - total_width // 2
+                
+                default_map_button = pygame.Rect(start_x, 300, map_button_width, map_button_height)
+                custom_map_button = pygame.Rect(start_x + map_button_width + spacing, 300, map_button_width, map_button_height)
+                empty_map_button = pygame.Rect(start_x + (map_button_width + spacing) * 2, 300, map_button_width, map_button_height)
+                
+                if default_map_button.collidepoint(mouse_pos):
+                    if self.click_sound:
+                        self.click_sound.play()
+                    self.selected_map = "default"
+                    return {"action": "start_game", "map": "default"}
+                elif custom_map_button.collidepoint(mouse_pos):
+                    if self.click_sound:
+                        self.click_sound.play()
+                    self.selected_map = "custom"
+                    return {"action": "start_game", "map": "custom"}
+                elif empty_map_button.collidepoint(mouse_pos):
+                    if self.click_sound:
+                        self.click_sound.play()
+                    self.selected_map = "empty"
+                    return {"action": "start_game", "map": "empty"}
+                elif self.buttons["back"].collidepoint(mouse_pos):
+                    if self.click_sound:
+                        self.click_sound.play()
+                    self.current_screen = "main"
             
             elif self.current_screen in ["settings", "how_to_play"]:
                 if self.buttons["back"].collidepoint(mouse_pos):
@@ -129,6 +162,8 @@ class MenuScreen:
         """Dessine le menu"""
         if self.current_screen == "main":
             self.draw_main_menu()
+        elif self.current_screen == "map_selection":
+            self.draw_map_selection()
         elif self.current_screen == "settings":
             self.draw_settings()
         elif self.current_screen == "how_to_play":
@@ -213,6 +248,94 @@ class MenuScreen:
         # Bouton Commencer avec le mode sélectionné
         start_text = f"COMMENCER ({self.selected_game_mode.upper()})"
         self.draw_button("start_selected", start_text, (255, 165, 0), (255, 200, 50))
+        
+        # Bouton retour
+        self.draw_button("back", "RETOUR", (100, 100, 100), (150, 150, 150))
+    
+    def draw_map_selection(self):
+        """Dessine l'écran de sélection de map"""
+        # Fond dégradé
+        self.draw_gradient_background()
+        
+        # Titre
+        title_text = self.title_font.render("CHOIX DE LA MAP", True, (255, 255, 255))
+        title_shadow = self.title_font.render("CHOIX DE LA MAP", True, (0, 0, 0))
+        
+        title_rect = title_text.get_rect(center=(self.screen_width//2, 120))
+        shadow_rect = title_rect.copy()
+        shadow_rect.x += 3
+        shadow_rect.y += 3
+        
+        self.screen.blit(title_shadow, shadow_rect)
+        self.screen.blit(title_text, title_rect)
+        
+        # Sous-titre
+        subtitle = self.text_font.render("Sélectionnez une carte pour commencer", True, (200, 200, 200))
+        subtitle_rect = subtitle.get_rect(center=(self.screen_width//2, 200))
+        self.screen.blit(subtitle, subtitle_rect)
+        
+        # Boutons de sélection de map
+        map_button_width = 250
+        map_button_height = 200
+        spacing = 40
+        total_width = map_button_width * 3 + spacing * 2
+        start_x = self.screen_width // 2 - total_width // 2
+        
+        default_map_button = pygame.Rect(start_x, 300, map_button_width, map_button_height)
+        custom_map_button = pygame.Rect(start_x + map_button_width + spacing, 300, map_button_width, map_button_height)
+        empty_map_button = pygame.Rect(start_x + (map_button_width + spacing) * 2, 300, map_button_width, map_button_height)
+        
+        mouse_pos = pygame.mouse.get_pos()
+        map_name_font = pygame.font.Font(None, 40)
+        desc_font = pygame.font.Font(None, 24)
+        
+        # Bouton Map par défaut (avec obstacles)
+        default_hover = default_map_button.collidepoint(mouse_pos)
+        default_color = (50, 150, 50) if default_hover else (30, 100, 30)
+        pygame.draw.rect(self.screen, default_color, default_map_button, border_radius=15)
+        pygame.draw.rect(self.screen, (100, 255, 100), default_map_button, 4, border_radius=15)
+        
+        default_title = map_name_font.render("PLAINE", True, (255, 255, 255))
+        default_title_rect = default_title.get_rect(center=(default_map_button.centerx, default_map_button.y + 35))
+        self.screen.blit(default_title, default_title_rect)
+        
+        desc_lines = ["La plaine sauvage", "classique"]
+        for i, line in enumerate(desc_lines):
+            desc_text = desc_font.render(line, True, (200, 200, 200))
+            desc_rect = desc_text.get_rect(center=(default_map_button.centerx, default_map_button.y + 100 + i * 28))
+            self.screen.blit(desc_text, desc_rect)
+        
+        # Bouton Map personnalisée (labyrinthe)
+        custom_hover = custom_map_button.collidepoint(mouse_pos)
+        custom_color = (150, 100, 150) if custom_hover else (100, 60, 100)
+        pygame.draw.rect(self.screen, custom_color, custom_map_button, border_radius=15)
+        pygame.draw.rect(self.screen, (200, 150, 200), custom_map_button, 4, border_radius=15)
+        
+        custom_title = map_name_font.render("Forêt", True, (255, 255, 255))
+        custom_title_rect = custom_title.get_rect(center=(custom_map_button.centerx, custom_map_button.y + 35))
+        self.screen.blit(custom_title, custom_title_rect)
+        
+        custom_desc_lines = ["Les arbres y forment", "un labyrinth"]
+        for i, line in enumerate(custom_desc_lines):
+            desc_text = desc_font.render(line, True, (200, 200, 200))
+            desc_rect = desc_text.get_rect(center=(custom_map_button.centerx, custom_map_button.y + 100 + i * 28))
+            self.screen.blit(desc_text, desc_rect)
+        
+        # Bouton Map vide (que de l'herbe)
+        empty_hover = empty_map_button.collidepoint(mouse_pos)
+        empty_color = (100, 100, 150) if empty_hover else (60, 60, 100)
+        pygame.draw.rect(self.screen, empty_color, empty_map_button, border_radius=15)
+        pygame.draw.rect(self.screen, (150, 150, 255), empty_map_button, 4, border_radius=15)
+        
+        empty_title = map_name_font.render("Terrain vague", True, (255, 255, 255))
+        empty_title_rect = empty_title.get_rect(center=(empty_map_button.centerx, empty_map_button.y + 35))
+        self.screen.blit(empty_title, empty_title_rect)
+        
+        empty_desc_lines = ["Le vrai", "no man's land"]
+        for i, line in enumerate(empty_desc_lines):
+            desc_text = desc_font.render(line, True, (200, 200, 200))
+            desc_rect = desc_text.get_rect(center=(empty_map_button.centerx, empty_map_button.y + 100 + i * 28))
+            self.screen.blit(desc_text, desc_rect)
         
         # Bouton retour
         self.draw_button("back", "RETOUR", (100, 100, 100), (150, 150, 150))
@@ -502,6 +625,11 @@ class MenuManager:
                         "music_volume": self.menu.music_volume,
                         "sfx_volume": self.menu.sfx_volume
                     }
+                elif isinstance(result, dict) and result.get("action") == "start_game":
+                    # Retourner le dictionnaire avec la map sélectionnée et les volumes
+                    result["music_volume"] = self.menu.music_volume
+                    result["sfx_volume"] = self.menu.sfx_volume
+                    return result
                 elif result == "quit":
                     return {"action": "quit"}
             

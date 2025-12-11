@@ -3,12 +3,13 @@ import random
 import os
 
 class MapGenerator:
-    def __init__(self, width=16, height=12, visual_width=32, visual_height=24):
+    def __init__(self, width=16, height=12, visual_width=32, visual_height=24, map_name="default"):
         """Initialise le générateur de map avec des assets terrain - plus de cases plus petites"""
         self.width = width  # Grille logique avec plus de cases
         self.height = height
         self.visual_width = visual_width  # Grille visuelle avec plus de détails
         self.visual_height = visual_height
+        self.map_name = map_name
         
         # Charger les assets de la carte
         self.terrain_images = self.load_terrain_assets()
@@ -52,7 +53,26 @@ class MapGenerator:
         return grid
     
     def generate_beautiful_visual_map(self):
-        """Génère une belle carte visuelle avec de l'herbe et quelques arbres à des positions fixes"""
+        """Génère une belle carte visuelle selon le type de map sélectionné"""
+        if self.map_name == "empty":
+            return self.flat_map()
+        elif self.map_name == "custom":
+            return self.maze_map()
+        else:  # "default"
+            return self.default_map()
+    
+    def flat_map(self):
+        """Génère une map vide avec uniquement de l'herbe"""
+        grid = []
+        for y in range(self.visual_height):
+            row = []
+            for x in range(self.visual_width):
+                row.append('grass')
+            grid.append(row)
+        return grid
+    
+    def default_map(self):
+        """Génère la map par défaut avec de l'herbe et quelques arbres à des positions fixes"""
         grid = []
         
         # Créer une carte avec de l'herbe partout
@@ -103,6 +123,79 @@ class MapGenerator:
         for x, y, terrain_type in custom_elements:
             if 0 <= x < self.visual_width and 0 <= y < self.visual_height:
                 grid[y][x] = terrain_type
+        
+        return grid
+    
+    def maze_map(self):
+        """Génère une map personnalisée"""
+        grid = []
+        
+        # Créer une carte avec de l'herbe partout
+        for y in range(self.visual_height):
+            row = []
+            for x in range(self.visual_width):
+                row.append('grass')
+            grid.append(row)
+        
+        # Carré central avec ouvertures
+        for y in range(4, 8):
+            for x in range(6, 10):
+                if y == 4 or y == 7 or x == 6 or x == 9:
+                    if not ((x == 6 and y == 5) or (x == 9 and y == 6)):
+                        grid[y][x] = 'tree'
+        
+        # Ligne horizontale gauche (y=6, x=3 à 5)
+        for x in range(3, 6):
+            grid[6][x] = 'tree'
+        
+        # Ligne horizontale haut droite (y=5, x=10 à 12)
+        for x in range(10, 13):
+            grid[5][x] = 'tree'
+        
+        # Ligne verticale gauche (y=4 à 5, x=4)
+        for y in range(4, 6):
+            grid[y][4] = 'tree'
+        
+        # Ligne verticale droite (y=6 à 7, x=11)
+        for y in range(6, 8):
+            grid[y][11] = 'tree'
+        
+        # Ligne horizontale haut (y=2, x=6 à 8)
+        for x in range(6, 9):
+            grid[2][x] = 'tree'
+        
+        # Arbres isolés
+        grid[3][7] = 'tree'
+        grid[8][8] = 'tree'
+        grid[9][7] = 'tree'
+        grid[9][8] = 'tree'
+        grid[9][9] = 'tree'
+        grid[8][4] = 'tree'
+        grid[9][4] = 'tree'
+        grid[10][4] = 'tree'
+        grid[1][11] = 'tree'
+        grid[2][11] = 'tree'
+        grid[3][11] = 'tree'
+        grid[2][4] = 'tree'
+        grid[10][11] = 'tree'
+        grid[2][13] = 'tree'
+        grid[2][14] = 'tree'
+        grid[9][1] = 'tree'
+        grid[9][2] = 'tree'
+        grid[5][1] = 'tree'
+        grid[6][1] = 'tree'
+        grid[7][1] = 'tree'
+        grid[4][14] = 'tree'
+        grid[5][14] = 'tree'
+        grid[6][14] = 'tree'
+        
+        grid[5][5] = 'dirt'
+        grid[5][6] = 'dirt'
+        grid[6][9] = 'dirt'
+        grid[6][10] = 'dirt'
+        grid[7][10] = 'dirt'
+        grid[4][5] = 'dirt'
+
         
         return grid
     
