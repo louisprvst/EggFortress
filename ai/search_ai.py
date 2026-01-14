@@ -103,22 +103,30 @@ class SearchAI(BaseAI):
         # Ressources du joueur
         steaks = game.player1_steaks if player == 1 else game.player2_steaks
         
-        # 1. Actions de spawn
-        if player == game.current_player:
+        # 1. Actions de spawn (seulement si c'est le tour actuel du joueur)
+        if player == game.current_player and not getattr(game, 'spawn_action_done', False):
             spawn_positions = self.calculate_spawn_positions(game, player)
             costs = {1: 40, 2: 80, 3: 100}
             
             for pos in spawn_positions:
                 for dino_type in [1, 2, 3]:
                     if steaks >= costs[dino_type]:
-                        actions.append({
-                            'type': 'spawn',
-                            'x': pos[0],
-                            'y': pos[1],
-                            'dino_type': dino_type
-                        })
+                        # Vérifier le cooldown du spawn
+                        cooldown_ok = True
+                        if hasattr(game, 'spawn_cooldowns'):
+                            cooldown = game.spawn_cooldowns.get(player, {}).get(dino_type, 0)
+                            if cooldown > 0:
+                                cooldown_ok = False
+                        
+                        if cooldown_ok:
+                            actions.append({
+                                'type': 'spawn',
+                                'x': pos[0],
+                                'y': pos[1],
+                                'dino_type': dino_type
+                            })
         
-        # 2. Actions avec les dinosaures
+        # 2. Actions avec les dinosaures (seulement ceux qui n'ont pas bougé)
         for dino in game.dinosaurs:
             if dino.player == player and not dino.has_moved and dino.immobilized_turns == 0:
                 # Mouvements
@@ -131,7 +139,7 @@ class SearchAI(BaseAI):
                         'target_y': move_pos[1]
                     })
                 
-                # Attaques
+                # Attaques (toujours prioritaires si disponibles)
                 targets = self.calculate_attack_targets(game, dino, player)
                 for target, target_type in targets:
                     actions.append({

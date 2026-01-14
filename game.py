@@ -10,10 +10,13 @@ from ui import UI
 from ai.search_ai import SearchAI
 
 class Game:
-    def __init__(self, screen, map_name="default"):
+    def __init__(self, screen, map_name="default", game_mode="ai"):
         self.screen = screen
         self.screen_width = screen.get_width()
         self.screen_height = screen.get_height()
+        
+        # Mode de jeu
+        self.game_mode = game_mode  # "ai" ou "2players"
         
         # Initialiser le système audio
         pygame.mixer.init()
@@ -149,11 +152,11 @@ class Game:
             'particles': []
         }
         
-        # IA pour le joueur 2 (rouge)
-        self.ai_player = 2
-        self.ai = SearchAI(player=2, max_enemy_responses=8, verbose=True)
+        # IA pour le joueur 2 (rouge) - seulement en mode IA
+        self.ai_player = 2 if game_mode == "ai" else None
+        self.ai = SearchAI(player=2, max_enemy_responses=8, verbose=True) if game_mode == "ai" else None
         self.ai_thinking = False
-        self.ai_action_delay = 1.5  # Délai avant que l'IA joue (en secondes)
+        self.ai_action_delay = 0.5  # Délai avant que l'IA joue (en secondes)
         self.ai_action_timer = 0
         
         self.init_game()
@@ -978,12 +981,9 @@ class Game:
         popup_text = f"Tour {self.turn_number}\nAu tour du joueur {new_player_color} !"
         
         self.show_turn_popup(popup_text)
-        # Si c'est au tour de l'IA, retarder son action jusqu'à la fin du pop-up
+        # Si c'est au tour de l'IA, la laisser jouer rapidement après le pop-up
         if getattr(self, 'ai', None) is not None and self.current_player == getattr(self, 'ai_player', None):
-            try:
-                self.ai_action_timer = max(getattr(self, 'ai_action_timer', 0), self.turn_popup.get('duration', 1.5))
-            except Exception:
-                self.ai_action_timer = getattr(self, 'ai_action_timer', 0)
+            self.ai_action_timer = 0
         
         # Réinitialiser les actions
         self.action_taken = False
@@ -994,8 +994,11 @@ class Game:
         # Réinitialiser le timer du tour
         self.turn_start_time = pygame.time.get_ticks()
         
-        # Réinitialiser l'état de l'IA (ne pas écraser ai_action_timer configuré pour le pop-up)
+        # Réinitialiser complètement l'état de l'IA
         self.ai_thinking = False
+        # Réinitialiser aussi le timer IA pour qu'elle ne rejoue pas immédiatement
+        if old_player == self.ai_player:
+            self.ai_action_timer = 0
         
         # Vérifier les conditions de victoire
         self.check_victory()
@@ -1236,9 +1239,10 @@ class Game:
         # Mettre à jour la notification d'élimination
         self.update_kill_notification(delta_time)
         
-        # Gérer l'IA (joueur 2)
-        if not self.game_over and self.current_player == self.ai_player:
-            if not self.ai_thinking and not self.spawn_action_done and not self.move_animation['active']:
+        # Gérer l'IA (joueur 2) - seulement en mode IA
+        if self.game_mode == "ai" and not self.game_over and self.current_player == self.ai_player:
+            # L'IA peut jouer si elle n'est pas en train de réfléchir et qu'il n'y a pas d'animation en cours
+            if not self.ai_thinking and not self.move_animation['active'] and not self.attack_animation['active']:
                 # Attendre un délai avant que l'IA joue
                 self.ai_action_timer += delta_time
                 if self.ai_action_timer >= self.ai_action_delay:
@@ -1256,32 +1260,76 @@ class Game:
     def execute_ai_turn(self):
         """Fait jouer l'IA pour son tour (appel synchrone depuis la boucle principale)."""
         try:
+            # Vérifier que c'est bien le tour de l'IA
+            if self.current_player != self.ai_player:
+                self.ai_thinking = False
+                return
+                
             if not getattr(self, 'ai', None):
+                print("IA non initialisée, fin du tour")
                 self.end_turn()
+                self.ai_thinking = False
                 return
 
+            # Vérifier qu'il n'y a pas déjà une action en cours
+            if self.spawn_action_done or self.move_animation['active'] or self.attack_animation['active']:
+                self.ai_thinking = False
+                return
+
+            print(f"IA (joueur {self.ai_player}) réfléchit...")
             action = self.ai.choose_action(self)
-            if action:
+            print(f"IA a choisi: {action.get('type') if action else 'None'}")
+            
+            if action and action.get('type') != 'pass':
                 self.execute_ai_action(action)
             else:
+                # Si l'IA passe son tour (pas d'actions possibles)
+                print("IA passe son tour")
                 self.end_turn()
         except Exception as e:
             print(f"Erreur IA: {e}")
+            import traceback
+            traceback.print_exc()
             self.end_turn()
         finally:
             self.ai_thinking = False
 
     def execute_ai_action(self, action):
         """Exécute une action choisie par l'IA sur l'état réel du jeu."""
+        if not action:
+            print("Pas d'action fournie, fin du tour")
+            self.end_turn()
+            return
+            
         action_type = action.get('type')
+        print(f"Exécution action IA: {action_type}")
 
         if action_type == 'spawn':
             x, y = action.get('x'), action.get('y')
             dino_type = action.get('dino_type')
             if x is not None and y is not None and dino_type is not None:
-                self.spawn_dinosaur(x, y, dino_type)
-                self.spawn_action_done = True
-                self.auto_end_turn_time = pygame.time.get_ticks() + 2000
+                # Vérifier que la case est toujours libre
+                is_free = True
+                for egg in self.eggs.values():
+                    if egg.x == x and egg.y == y:
+                        is_free = False
+                        break
+                for dino in self.dinosaurs:
+                    if dino.x == x and dino.y == y:
+                        is_free = False
+                        break
+                
+                if is_free:
+                    print(f"Spawn dino type {dino_type} à ({x}, {y})")
+                    self.spawn_dinosaur(x, y, dino_type)
+                    self.spawn_action_done = True
+                    self.auto_end_turn_time = pygame.time.get_ticks() + 1500
+                else:
+                    print("Position bloquée, fin du tour")
+                    self.end_turn()
+            else:
+                print("Paramètres spawn invalides, fin du tour")
+                self.end_turn()
 
         elif action_type == 'move':
             dinosaur = action.get('dinosaur')
@@ -1291,15 +1339,24 @@ class Game:
                 # Trouver le dinosaure réel correspondant
                 real_dino = None
                 for d in self.dinosaurs:
-                    if (d.x == dinosaur.x and d.y == dinosaur.y and d.player == dinosaur.player and d.dino_type == getattr(dinosaur, 'dino_type', d.dino_type)):
+                    if (d.x == dinosaur.x and d.y == dinosaur.y and d.player == dinosaur.player and 
+                        d.dino_type == getattr(dinosaur, 'dino_type', d.dino_type) and not d.has_moved):
                         real_dino = d
                         break
 
-                if real_dino and not real_dino.has_moved:
+                if real_dino and not real_dino.has_moved and real_dino.immobilized_turns == 0:
+                    print(f"Déplacement dino de ({real_dino.x}, {real_dino.y}) vers ({target_x}, {target_y})")
                     self.move_dinosaur(real_dino, target_x, target_y)
-                    # Délai pour voir le mouvement
-                    self.ai_thinking = False
-                    self.ai_action_timer = 0.8
+                    # Marquer le dinosaure comme ayant bougé
+                    real_dino.has_moved = True
+                    # Fin de tour automatique après mouvement
+                    self.auto_end_turn_time = pygame.time.get_ticks() + 800
+                else:
+                    print("Dinosaure indisponible, fin du tour")
+                    self.end_turn()
+            else:
+                print("Paramètres move invalides, fin du tour")
+                self.end_turn()
 
         elif action_type == 'attack':
             attacker = action.get('attacker')
@@ -1309,36 +1366,62 @@ class Game:
             if attacker:
                 real_attacker = None
                 for d in self.dinosaurs:
-                    if (d.x == attacker.x and d.y == attacker.y and d.player == attacker.player and d.dino_type == getattr(attacker, 'dino_type', d.dino_type)):
+                    if (d.x == attacker.x and d.y == attacker.y and d.player == attacker.player and 
+                        d.dino_type == getattr(attacker, 'dino_type', d.dino_type) and not d.has_moved):
                         real_attacker = d
                         break
 
-                if real_attacker and not real_attacker.has_moved:
+                if real_attacker and not real_attacker.has_moved and real_attacker.immobilized_turns == 0:
+                    action_executed = False
                     if target_type == 'egg' and target:
                         egg = self.eggs.get(target.player)
                         if egg:
+                            print(f"Attaque de l'œuf ennemi")
                             self.attack_egg(real_attacker, egg)
+                            action_executed = True
                     elif target:
                         real_target = None
                         for d in self.dinosaurs:
-                            if (d.x == target.x and d.y == target.y and d.player == target.player and d.dino_type == getattr(target, 'dino_type', d.dino_type)):
+                            if (d.x == target.x and d.y == target.y and d.player == target.player and 
+                                d.dino_type == getattr(target, 'dino_type', d.dino_type)):
                                 real_target = d
                                 break
                         if real_target:
+                            print(f"Attaque d'un dinosaure ennemi")
                             self.attack(real_attacker, real_target)
-
-                    # Attendre que l'animation d'attaque se termine
-                    self.ai_thinking = False
-                    self.ai_action_timer = 1.2  # Délai pour voir l'animation complète
+                            action_executed = True
+                    
+                    if action_executed:
+                        # Marquer l'attaquant comme ayant agi
+                        real_attacker.has_moved = True
+                        # Fin de tour automatique après attaque
+                        self.auto_end_turn_time = pygame.time.get_ticks() + 1200
+                    else:
+                        print("Cible disparue, fin du tour")
+                        self.end_turn()
+                else:
+                    print("Attaquant indisponible, fin du tour")
+                    self.end_turn()
+            else:
+                print("Pas d'attaquant, fin du tour")
+                self.end_turn()
 
         elif action_type == 'trap':
             x, y = action.get('x'), action.get('y')
             if x is not None and y is not None:
+                print(f"Placement piège à ({x}, {y})")
                 self.place_trap(x, y)
                 self.spawn_action_done = True
-                self.auto_end_turn_time = pygame.time.get_ticks() + 1500
+                self.auto_end_turn_time = pygame.time.get_ticks() + 1000
+            else:
+                print("Paramètres trap invalides, fin du tour")
+                self.end_turn()
 
         elif action_type == 'pass':
+            print("IA passe son tour")
+            self.end_turn()
+        else:
+            print(f"Type d'action inconnu: {action_type}, fin du tour")
             self.end_turn()
     
     def draw(self):

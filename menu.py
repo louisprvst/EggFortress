@@ -64,8 +64,9 @@ class MenuScreen:
         self.text_font = pygame.font.Font(None, 32)
         
         # États du menu
-        self.current_screen = "main"  # "main", "map_selection", "settings", "how_to_play"
+        self.current_screen = "main"  # "main", "game_mode", "map_selection", "settings", "how_to_play"
         self.selected_map = "default"
+        self.game_mode = "ai"  # "ai" ou "2players"
         
         # Animation
         self.time = 0
@@ -106,7 +107,7 @@ class MenuScreen:
                 if self.buttons["play"].collidepoint(mouse_pos):
                     if self.click_sound:
                         self.click_sound.play()
-                    self.current_screen = "map_selection"
+                    self.current_screen = "game_mode"
                 elif self.buttons["settings"].collidepoint(mouse_pos):
                     if self.click_sound:
                         self.click_sound.play()
@@ -115,6 +116,32 @@ class MenuScreen:
                     if self.click_sound:
                         self.click_sound.play()
                     return "quit"
+            
+            elif self.current_screen == "game_mode":
+                # Boutons de sélection du mode de jeu
+                mode_button_width = 350
+                mode_button_height = 250
+                spacing = 60
+                total_width = mode_button_width * 2 + spacing
+                start_x = self.screen_width // 2 - total_width // 2
+                
+                ai_mode_button = pygame.Rect(start_x, 300, mode_button_width, mode_button_height)
+                two_players_button = pygame.Rect(start_x + mode_button_width + spacing, 300, mode_button_width, mode_button_height)
+                
+                if ai_mode_button.collidepoint(mouse_pos):
+                    if self.click_sound:
+                        self.click_sound.play()
+                    self.game_mode = "ai"
+                    self.current_screen = "map_selection"
+                elif two_players_button.collidepoint(mouse_pos):
+                    if self.click_sound:
+                        self.click_sound.play()
+                    self.game_mode = "2players"
+                    self.current_screen = "map_selection"
+                elif self.buttons["back"].collidepoint(mouse_pos):
+                    if self.click_sound:
+                        self.click_sound.play()
+                    self.current_screen = "main"
             
             elif self.current_screen == "map_selection":
                 # Boutons de sélection de map
@@ -132,21 +159,21 @@ class MenuScreen:
                     if self.click_sound:
                         self.click_sound.play()
                     self.selected_map = "default"
-                    return {"action": "start_game", "map": "default"}
+                    return {"action": "start_game", "map": "default", "game_mode": self.game_mode}
                 elif custom_map_button.collidepoint(mouse_pos):
                     if self.click_sound:
                         self.click_sound.play()
                     self.selected_map = "custom"
-                    return {"action": "start_game", "map": "custom"}
+                    return {"action": "start_game", "map": "custom", "game_mode": self.game_mode}
                 elif empty_map_button.collidepoint(mouse_pos):
                     if self.click_sound:
                         self.click_sound.play()
                     self.selected_map = "empty"
-                    return {"action": "start_game", "map": "empty"}
+                    return {"action": "start_game", "map": "empty", "game_mode": self.game_mode}
                 elif self.buttons["back"].collidepoint(mouse_pos):
                     if self.click_sound:
                         self.click_sound.play()
-                    self.current_screen = "main"
+                    self.current_screen = "game_mode"
             
             elif self.current_screen in ["settings", "how_to_play"]:
                 if self.buttons["back"].collidepoint(mouse_pos):
@@ -185,6 +212,8 @@ class MenuScreen:
         """Dessine le menu"""
         if self.current_screen == "main":
             self.draw_main_menu()
+        elif self.current_screen == "game_mode":
+            self.draw_game_mode_selection()
         elif self.current_screen == "map_selection":
             self.draw_map_selection()
         elif self.current_screen == "settings":
@@ -236,40 +265,51 @@ class MenuScreen:
         self.screen.blit(title_text, title_rect)
         
         # Sous-titre
-        subtitle = self.text_font.render("Choisissez votre adversaire :", True, (200, 200, 200))
-        subtitle_rect = subtitle.get_rect(center=(self.screen_width//2, 170))
+        subtitle = self.text_font.render("Choisissez votre mode de jeu :", True, (200, 200, 200))
+        subtitle_rect = subtitle.get_rect(center=(self.screen_width//2, 200))
         self.screen.blit(subtitle, subtitle_rect)
         
-        # Description du mode sélectionné
-        if self.selected_game_mode == "ai":
-            desc_text = "Affrontez une Intelligence Artificielle stratégique"
-            desc_color = (150, 255, 150)
-        else:
-            desc_text = "Jouez contre un autre joueur sur le même ordinateur"
-            desc_color = (255, 150, 150)
+        # Boutons de sélection du mode
+        mode_button_width = 350
+        mode_button_height = 250
+        spacing = 60
+        total_width = mode_button_width * 2 + spacing
+        start_x = self.screen_width // 2 - total_width // 2
         
-        description = self.text_font.render(desc_text, True, desc_color)
-        desc_rect = description.get_rect(center=(self.screen_width//2, 220))
-        self.screen.blit(description, desc_rect)
+        ai_mode_button = pygame.Rect(start_x, 300, mode_button_width, mode_button_height)
+        two_players_button = pygame.Rect(start_x + mode_button_width + spacing, 300, mode_button_width, mode_button_height)
         
-        # Boutons de sélection avec icônes
-        # Bouton IA
-        ai_selected = self.selected_game_mode == "ai"
-        ai_color = (0, 255, 0) if ai_selected else (100, 200, 100)
-        ai_hover_color = (50, 255, 50) if ai_selected else (150, 255, 150)
+        mouse_pos = pygame.mouse.get_pos()
+        mode_font = pygame.font.Font(None, 50)
+        desc_font = pygame.font.Font(None, 28)
         
-        self.draw_game_mode_button("vs_ai", "🤖 VS IA", ai_color, ai_hover_color, ai_selected)
+        # Bouton 1 Joueur
+        ai_hover = ai_mode_button.collidepoint(mouse_pos)
+        ai_color = (50, 150, 50) if ai_hover else (30, 100, 30)
+        pygame.draw.rect(self.screen, ai_color, ai_mode_button, border_radius=15)
+        pygame.draw.rect(self.screen, (100, 255, 100), ai_mode_button, 4, border_radius=15)
         
-        # Bouton Joueur
-        human_selected = self.selected_game_mode == "human"
-        human_color = (255, 100, 100) if human_selected else (200, 100, 100)
-        human_hover_color = (255, 150, 150) if human_selected else (255, 150, 150)
+        ai_title = mode_font.render("1 JOUEUR", True, (255, 255, 255))
+        ai_title_rect = ai_title.get_rect(center=(ai_mode_button.centerx, ai_mode_button.centery - 20))
+        self.screen.blit(ai_title, ai_title_rect)
         
-        self.draw_game_mode_button("vs_human", "👥 VS JOUEUR", human_color, human_hover_color, human_selected)
+        ai_desc = desc_font.render("Affrontez l'ordinateur", True, (200, 200, 200))
+        ai_desc_rect = ai_desc.get_rect(center=(ai_mode_button.centerx, ai_mode_button.centery + 30))
+        self.screen.blit(ai_desc, ai_desc_rect)
         
-        # Bouton Commencer avec le mode sélectionné
-        start_text = f"COMMENCER ({self.selected_game_mode.upper()})"
-        self.draw_button("start_selected", start_text, (255, 165, 0), (255, 200, 50))
+        # Bouton 2 Joueurs
+        human_hover = two_players_button.collidepoint(mouse_pos)
+        human_color = (150, 50, 50) if human_hover else (100, 30, 30)
+        pygame.draw.rect(self.screen, human_color, two_players_button, border_radius=15)
+        pygame.draw.rect(self.screen, (255, 100, 100), two_players_button, 4, border_radius=15)
+        
+        human_title = mode_font.render("2 JOUEURS", True, (255, 255, 255))
+        human_title_rect = human_title.get_rect(center=(two_players_button.centerx, two_players_button.centery - 20))
+        self.screen.blit(human_title, human_title_rect)
+        
+        human_desc = desc_font.render("Jouez contre un ami", True, (200, 200, 200))
+        human_desc_rect = human_desc.get_rect(center=(two_players_button.centerx, two_players_button.centery + 30))
+        self.screen.blit(human_desc, human_desc_rect)
         
         # Bouton retour
         self.draw_button("back", "RETOUR", (100, 100, 100), (150, 150, 150))
