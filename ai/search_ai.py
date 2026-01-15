@@ -38,12 +38,15 @@ class SearchAI(BaseAI):
         possible_actions = self.generate_actions(game, self.player)
         
         if not possible_actions or len(possible_actions) == 0:
-            return {'type': 'pass'}
+            return None  # Aucune action possible
         
-        # Filtrer l'action "pass" si d'autres actions existent
+        # Filtrer l'action "pass" - l'IA ne passe jamais son tour
         non_pass_actions = [a for a in possible_actions if a['type'] != 'pass']
         if non_pass_actions:
             possible_actions = non_pass_actions
+        else:
+            # Si seulement l'action pass existe, retourner None
+            return None
         
         best_action = None
         best_score = float('-inf')
@@ -85,7 +88,7 @@ class SearchAI(BaseAI):
                 best_score = min_score
                 best_action = action
         
-        return best_action if best_action else {'type': 'pass'}
+        return best_action  # Retourne None si aucune action valide
     
     def generate_actions(self, game, player):
         """
@@ -241,9 +244,9 @@ class SearchAI(BaseAI):
                 if egg.x == pos_x and egg.y == pos_y:
                     targets.append((egg, 'egg'))
             
-            # Vérifier dinosaures ennemis
+            # Vérifier dinosaures ennemis (ignorer les dinosaures déjà morts)
             for dino in game.dinosaurs:
-                if dino.player != player and dino.x == pos_x and dino.y == pos_y:
+                if dino.player != player and dino.x == pos_x and dino.y == pos_y and dino.health > 0:
                     targets.append((dino, 'dinosaur'))
         
         return targets
