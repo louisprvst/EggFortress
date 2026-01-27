@@ -83,12 +83,13 @@ class SpawnEgg(Entity):
         center_y = self.y * cell_height + cell_height // 2 + board_offset_y
         
         if not self.is_hatching:
-            # Dessiner l'œuf normal avec barre de progression
+            # Dessiner l'œuf normal
             if self.image:
                 x_pos = self.x * cell_width + board_offset_x
                 y_pos = self.y * cell_height + board_offset_y
                 screen.blit(self.image, (x_pos, y_pos))
-            # Afficher le nombre de tours restants avant éclosion (au centre de la case)
+            
+            # Afficher le nombre de tours restants avant éclosion (dans un coin)
             remaining_turns = max(0, self.spawn_turns_required - self.spawn_turns_elapsed)
 
             # Petit fond circulaire pour la lisibilité

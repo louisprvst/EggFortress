@@ -19,11 +19,12 @@ def main():
                 # Vérifier si c'est un dictionnaire (avec sélection de map) ou une chaîne
                 if isinstance(result, dict) and result.get("action") == "start_game":
                     selected_map = result.get("map", "default")
+                    game_mode = result.get("game_mode", "ai")  # Récupérer le mode de jeu
                     screen = pygame.display.set_mode((0,0), pygame.FULLSCREEN)
                     pygame.display.set_caption("Egg Fortress")
                     
                     clock = pygame.time.Clock()
-                    game = Game(screen, map_name=selected_map)
+                    game = Game(screen, map_name=selected_map, game_mode=game_mode)
                     
                     # Appliquer les volumes du menu au jeu
                     game.set_volumes(result.get("music_volume", 0.3), result.get("sfx_volume", 1.0))
@@ -44,6 +45,11 @@ def main():
                             running = False
                             break  # Sortir de la boucle du jeu pour retourner au menu
                         
+                        # Vérifier si la surface est toujours valide avant de dessiner
+                        if not pygame.display.get_surface():
+                            running = False
+                            break
+                            
                         game.update()
                         game.draw()
                         pygame.display.flip()

@@ -38,12 +38,15 @@ class SearchAI(BaseAI):
         possible_actions = self.generate_actions(game, self.player)
         
         if not possible_actions or len(possible_actions) == 0:
-            return {'type': 'pass'}
+            return None  # Aucune action possible
         
-        # Filtrer l'action "pass" si d'autres actions existent
+        # Filtrer l'action "pass" - l'IA ne passe jamais son tour
         non_pass_actions = [a for a in possible_actions if a['type'] != 'pass']
         if non_pass_actions:
             possible_actions = non_pass_actions
+        else:
+            # Si seulement l'action pass existe, retourner None
+            return None
         
         best_action = None
         best_score = float('-inf')
@@ -85,7 +88,7 @@ class SearchAI(BaseAI):
                 best_score = min_score
                 best_action = action
         
-        return best_action if best_action else {'type': 'pass'}
+        return best_action  # Retourne None si aucune action valide
     
     def generate_actions(self, game, player):
         """
@@ -103,22 +106,30 @@ class SearchAI(BaseAI):
         # Ressources du joueur
         steaks = game.player1_steaks if player == 1 else game.player2_steaks
         
-        # 1. Actions de spawn
-        if player == game.current_player:
+        # 1. Actions de spawn (seulement si c'est le tour actuel du joueur)
+        if player == game.current_player and not getattr(game, 'spawn_action_done', False):
             spawn_positions = self.calculate_spawn_positions(game, player)
             costs = {1: 40, 2: 80, 3: 100}
             
             for pos in spawn_positions:
                 for dino_type in [1, 2, 3]:
                     if steaks >= costs[dino_type]:
-                        actions.append({
-                            'type': 'spawn',
-                            'x': pos[0],
-                            'y': pos[1],
-                            'dino_type': dino_type
-                        })
+                        # Vérifier le cooldown du spawn
+                        cooldown_ok = True
+                        if hasattr(game, 'spawn_cooldowns'):
+                            cooldown = game.spawn_cooldowns.get(player, {}).get(dino_type, 0)
+                            if cooldown > 0:
+                                cooldown_ok = False
+                        
+                        if cooldown_ok:
+                            actions.append({
+                                'type': 'spawn',
+                                'x': pos[0],
+                                'y': pos[1],
+                                'dino_type': dino_type
+                            })
         
-        # 2. Actions avec les dinosaures
+        # 2. Actions avec les dinosaures (seulement ceux qui n'ont pas bougé)
         for dino in game.dinosaurs:
             if dino.player == player and not dino.has_moved and dino.immobilized_turns == 0:
                 # Mouvements
@@ -131,7 +142,7 @@ class SearchAI(BaseAI):
                         'target_y': move_pos[1]
                     })
                 
-                # Attaques
+                # Attaques (toujours prioritaires si disponibles)
                 targets = self.calculate_attack_targets(game, dino, player)
                 for target, target_type in targets:
                     actions.append({
@@ -233,9 +244,9 @@ class SearchAI(BaseAI):
                 if egg.x == pos_x and egg.y == pos_y:
                     targets.append((egg, 'egg'))
             
-            # Vérifier dinosaures ennemis
+            # Vérifier dinosaures ennemis (ignorer les dinosaures déjà morts)
             for dino in game.dinosaurs:
-                if dino.player != player and dino.x == pos_x and dino.y == pos_y:
+                if dino.player != player and dino.x == pos_x and dino.y == pos_y and dino.health > 0:
                     targets.append((dino, 'dinosaur'))
         
         return targets
