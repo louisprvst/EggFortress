@@ -902,20 +902,10 @@ class Game:
     
     def attack(self, attacker, defender):
         """Gère le combat entre deux dinosaures - seul le défenseur prend des dégâts"""
-        print(f"\n[ATTAQUE] ===== DEBUT ATTAQUE =====")
-        print(f"[ATTAQUE] Attaquant: Joueur {attacker.player} à ({attacker.x}, {attacker.y})")
-        print(f"[ATTAQUE] Défenseur: Joueur {defender.player} à ({defender.x}, {defender.y})")
-        print(f"[ATTAQUE] Défenseur ID: {id(defender)}")
-        print(f"[ATTAQUE] Défenseur avant: {defender.health} HP (max: {defender.max_health})")
-        print(f"[ATTAQUE] Nombre de dinosaures avant: {len(self.dinosaurs)}")
-        print(f"[ATTAQUE] Le défenseur est-il dans la liste? {defender in self.dinosaurs}")
-        
         # Vérifier si le défenseur est déjà mort (bug de nettoyage)
         if defender.health <= 0:
-            print(f"[ATTAQUE] ERREUR: Le défenseur est déjà mort ! Suppression immédiate...")
             if defender in self.dinosaurs:
                 self.dinosaurs.remove(defender)
-                print(f"[ATTAQUE] Dinosaure fantôme éliminé ! ({len(self.dinosaurs)} dinosaures restants)")
             return
         
         # Démarrer l'animation d'attaque
@@ -924,28 +914,16 @@ class Game:
         damage = attacker.attack_power
         defender.take_damage(damage)
         
-        print(f"[ATTAQUE] Dégâts infligés: {damage}")
-        print(f"[ATTAQUE] Défenseur après: {defender.health} HP")
-        
         attacker.has_moved = True
         
         # Vérifier si le défenseur est mort et le supprimer immédiatement
         if defender.health <= 0:
-            print(f"[ATTAQUE] >> Le défenseur est mort (HP <= 0) !")
-            print(f"[ATTAQUE] >> Vérification: defender in self.dinosaurs = {defender in self.dinosaurs}")
             # Jouer le son de mort
             self.play_sound('death')
             
             # Supprimer le dinosaure de la liste
             if defender in self.dinosaurs:
                 self.dinosaurs.remove(defender)
-                print(f"[ATTAQUE] >> SUPPRESSION REUSSIE ! Dinosaure joueur {defender.player} éliminé !")
-                print(f"[ATTAQUE] >> Nombre de dinosaures après suppression: {len(self.dinosaurs)}")
-            else:
-                print(f"[ATTAQUE] >> ERREUR CRITIQUE: Le dinosaure n'était PAS dans la liste !")
-                print(f"[ATTAQUE] >> Liste des dinosaures actuels:")
-                for i, d in enumerate(self.dinosaurs):
-                    print(f"[ATTAQUE] >>   {i}: Joueur {d.player} à ({d.x}, {d.y}) - {d.health}HP - ID:{id(d)}")
             
             self.show_kill_notification(attacker.player, 'dinosaur')
             if attacker.player == 1:
@@ -953,7 +931,6 @@ class Game:
             else:
                 self.player2_steaks += 20
         
-        print(f"[ATTAQUE] ===== FIN ATTAQUE =====\n")
     
     def attack_egg(self, attacker, egg):
         """Attaque un œuf ennemi"""
@@ -1223,9 +1200,7 @@ class Game:
         # Nettoyer les dinosaures morts (sécurité supplémentaire)
         dead_dinos = [d for d in self.dinosaurs if d.health <= 0]
         if dead_dinos:
-            print(f"[NETTOYAGE] Suppression de {len(dead_dinos)} dinosaure(s) mort(s) :")
             for d in dead_dinos:
-                print(f"[NETTOYAGE]   - Joueur {d.player} à ({d.x}, {d.y}) avec {d.health} HP")
                 self.dinosaurs.remove(d)
         
         # Gérer les cooldowns et le temps
@@ -1332,16 +1307,11 @@ class Game:
             if self.move_animation['active'] or self.attack_animation['active']:
                 self.ai_thinking = False
                 return
-
-            print(f"IA (joueur {self.ai_player}) réfléchit...")
             action = self.ai.choose_action(self)
-            print(f"IA a choisi: {action.get('type') if action else 'None'}")
             
             if action:
                 self.execute_ai_action(action)
             else:
-                # Si l'IA n'a pas d'actions possibles, terminer le tour
-                print("IA n'a pas d'action valide, fin du tour")
                 self.end_turn()
         except Exception as e:
             print(f"Erreur IA: {e}")
@@ -1354,12 +1324,10 @@ class Game:
     def execute_ai_action(self, action):
         """Exécute une action choisie par l'IA sur l'état réel du jeu."""
         if not action:
-            print("Pas d'action fournie, fin du tour")
             self.end_turn()
             return
             
         action_type = action.get('type')
-        print(f"Exécution action IA: {action_type}")
 
         if action_type == 'spawn':
             x, y = action.get('x'), action.get('y')
@@ -1377,15 +1345,12 @@ class Game:
                         break
                 
                 if is_free:
-                    print(f"Spawn dino type {dino_type} à ({x}, {y})")
                     self.spawn_dinosaur(x, y, dino_type)
                     self.spawn_action_done = True
                     self.auto_end_turn_time = pygame.time.get_ticks() + 1500
                 else:
-                    print("Position bloquée, fin du tour")
                     self.end_turn()
             else:
-                print("Paramètres spawn invalides, fin du tour")
                 self.end_turn()
 
         elif action_type == 'move':
@@ -1402,17 +1367,14 @@ class Game:
                         break
 
                 if real_dino and not real_dino.has_moved and real_dino.immobilized_turns == 0:
-                    print(f"Déplacement dino de ({real_dino.x}, {real_dino.y}) vers ({target_x}, {target_y})")
                     self.move_dinosaur(real_dino, target_x, target_y)
                     # Marquer le dinosaure comme ayant bougé
                     real_dino.has_moved = True
                     # Fin de tour automatique après mouvement
                     self.auto_end_turn_time = pygame.time.get_ticks() + 800
                 else:
-                    print("Dinosaure indisponible, fin du tour")
                     self.end_turn()
             else:
-                print("Paramètres move invalides, fin du tour")
                 self.end_turn()
 
         elif action_type == 'attack':
@@ -1433,7 +1395,6 @@ class Game:
                     if target_type == 'egg' and target:
                         egg = self.eggs.get(target.player)
                         if egg and egg.player != real_attacker.player:
-                            print(f"Attaque de l'œuf ennemi")
                             self.attack_egg(real_attacker, egg)
                             action_executed = True
                     elif target:
@@ -1445,11 +1406,9 @@ class Game:
                                 break
                         # Vérifier que l'attaquant et la cible ne sont pas du même joueur
                         if real_target and real_target.player != real_attacker.player:
-                            print(f"Attaque d'un dinosaure ennemi (joueur {real_target.player})")
                             self.attack(real_attacker, real_target)
                             action_executed = True
                         elif real_target and real_target.player == real_attacker.player:
-                            print(f"ERREUR: Tentative d'attaque d'un allié ! Ignorer.")
                             action_executed = False
                     
                     if action_executed:
@@ -1458,27 +1417,21 @@ class Game:
                         # Fin de tour automatique après attaque
                         self.auto_end_turn_time = pygame.time.get_ticks() + 1200
                     else:
-                        print("Cible disparue, fin du tour")
                         self.end_turn()
                 else:
-                    print("Attaquant indisponible, fin du tour")
                     self.end_turn()
             else:
-                print("Pas d'attaquant, fin du tour")
                 self.end_turn()
 
         elif action_type == 'trap':
             x, y = action.get('x'), action.get('y')
             if x is not None and y is not None:
-                print(f"Placement piège à ({x}, {y})")
                 self.place_trap(x, y)
                 self.spawn_action_done = True
                 self.auto_end_turn_time = pygame.time.get_ticks() + 1000
             else:
-                print("Paramètres trap invalides, fin du tour")
                 self.end_turn()
         else:
-            print(f"Type d'action inconnu: {action_type}, fin du tour")
             self.end_turn()
     
     def draw(self):
