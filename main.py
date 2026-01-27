@@ -5,8 +5,20 @@ import pygame
 from game import Game
 from menu import MenuManager
 import traceback
+from logger import get_logger, GameLogger
+
+# Initialiser le logger
+logger = get_logger("main")
 
 def main():
+    logger.info("Démarrage d'EggFortress")
+    
+    # Nettoyer les anciens logs (>30 jours) - échec silencieux
+    try:
+        GameLogger().cleanup_old_logs()
+    except Exception as e:
+        logger.warning(f"Impossible de nettoyer les anciens logs: {e}")
+    
     try: 
         while True:  # Boucle pour permettre de revenir au menu
             # Créer et lancer le gestionnaire de menu
@@ -19,7 +31,9 @@ def main():
                 # Vérifier si c'est un dictionnaire (avec sélection de map) ou une chaîne
                 if isinstance(result, dict) and result.get("action") == "start_game":
                     selected_map = result.get("map", "default")
-                    game_mode = result.get("game_mode", "ai")  # Récupérer le mode de jeu
+                    game_mode = result.get("game_mode", "ai")
+                    logger.info(f"Lancement du jeu - Map: {selected_map}, Mode: {game_mode}")
+                    
                     screen = pygame.display.set_mode((0,0), pygame.FULLSCREEN)
                     pygame.display.set_caption("Egg Fortress")
                     
@@ -56,18 +70,20 @@ def main():
                         clock.tick(60)
                 else:
                     # Si on quitte le menu sans jouer
+                    logger.info("Retour au menu sans lancer de partie")
                     break
             else:
                 # Si le menu retourne None (fermeture)
+                logger.info("Fermeture du menu")
                 break
         
+        logger.info("Fermeture normale d'EggFortress")
         pygame.quit()
         
     except Exception as e:
-        print(f"Erreur lors de l'exécution: {e}")
-        
-        print("\nDétails de l'erreur:")
-        traceback.print_exc()
+        logger.critical(f"Erreur critique lors de l'exécution: {e}")
+        logger.critical("Détails de l'erreur:")
+        logger.critical(traceback.format_exc())
         
         try:
             pygame.quit()

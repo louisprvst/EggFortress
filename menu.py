@@ -3,6 +3,10 @@ import os
 import math
 import random
 import traceback
+from logger import get_logger
+
+# Logger pour le menu
+logger = get_logger("menu")
 
 class MenuScreen:
     def __init__(self, screen):
@@ -21,8 +25,9 @@ class MenuScreen:
                     self.background_image, 
                     (self.screen_width, self.screen_height)
                 )
+                logger.debug(f"Image de fond chargée: {bg_path}")
         except Exception as e:
-            print(f"Impossible de charger l'image de fond: {e}")
+            logger.error(f"Impossible de charger l'image de fond: {e}")
 
         # Charger le logo
         self.logo_image = None
@@ -35,15 +40,17 @@ class MenuScreen:
                 aspect_ratio = logo.get_height() / logo.get_width()
                 logo_height = int(logo_width * aspect_ratio)
                 self.logo_image = pygame.transform.smoothscale(logo, (logo_width, logo_height))
+                logger.debug(f"Logo chargé: {logo_path}")
         except Exception as e:
-            print(f"Impossible de charger le logo: {e}")
+            logger.error(f"Impossible de charger le logo: {e}")
 
         # Charger le son de clic du menu
         self.click_sound = None
         try:
             self.click_sound = pygame.mixer.Sound("assets/sounds/click-menu.mp3")
+            logger.debug("Son de clic du menu chargé")
         except Exception as e:
-            print(f"Impossible de charger le son de clic: {e}")
+            logger.error(f"Impossible de charger le son de clic: {e}")
         
         # Volumes (0.0 à 1.0)
         self.music_volume = 0.3
@@ -715,7 +722,7 @@ def main():
         return result
         
     except Exception as e:
-        print(f"Erreur dans le menu: {e}")
+        logger.critical(f"Erreur critique dans le menu: {e}")
         traceback.print_exc()
         pygame.quit()
         return "quit"

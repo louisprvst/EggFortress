@@ -5,6 +5,9 @@ Permet de copier et simuler des actions sans affecter le jeu réel
 
 from Entities.Dinosaur import Dinosaur
 from Entities.Trap import Trap
+from logger import get_logger
+
+logger = get_logger("ai")
 
 class GameSimulator:
     """Permet de copier et simuler des états de jeu"""
@@ -129,7 +132,7 @@ class GameSimulator:
             # 'pass' = ne rien faire, passer son tour
             
         except Exception as e:
-            print(f"Erreur simulation: {e}")
+            logger.error(f"Erreur simulation IA: {e}")
         
         return game_state
     

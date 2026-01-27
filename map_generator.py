@@ -1,6 +1,9 @@
 import pygame
 import random
 import os
+from logger import get_logger
+
+logger = get_logger("map")
 
 class MapGenerator:
     def __init__(self, width=16, height=12, visual_width=32, visual_height=24, map_name="default"):
@@ -35,8 +38,9 @@ class MapGenerator:
                 full_path = os.path.join(asset_path, filename)
                 image = pygame.image.load(full_path)
                 assets[terrain_type] = image
+                logger.debug(f"Asset terrain chargé: {terrain_type} ({filename})")
             except Exception as e:
-                print(f"Impossible de charger {filename}: {e}")
+                logger.error(f"Impossible de charger {filename}: {e}")
                 assets[terrain_type] = None
         
         return assets

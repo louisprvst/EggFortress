@@ -8,6 +8,9 @@ from Entities.Trap import Trap
 from map_generator import MapGenerator
 from ui import UI
 from ai.search_ai import SearchAI
+from logger import get_logger
+
+logger = get_logger("game")
 
 class Game:
     def __init__(self, screen, map_name="default", game_mode="ai"):
@@ -17,6 +20,8 @@ class Game:
         
         # Mode de jeu
         self.game_mode = game_mode  # "ai" ou "2players"
+        
+        logger.info(f"Initialisation d'une nouvelle partie - Map: {map_name}, Mode: {game_mode}")
         
         # Initialiser le système audio
         pygame.mixer.init()
@@ -190,8 +195,9 @@ class Game:
                 full_path = sound_path + filename
                 sound = pygame.mixer.Sound(full_path)
                 sounds[sound_name] = sound
+                logger.debug(f"Son chargé: {sound_name} ({filename})")
             except Exception as e:
-                print(f"Impossible de charger le son {filename}: {e}")
+                logger.error(f"Impossible de charger le son {filename}: {e}")
                 sounds[sound_name] = None
         
         # Charger et lancer la musique de fond en boucle
@@ -199,8 +205,9 @@ class Game:
             pygame.mixer.music.load(sound_path + 'music-in-game.mp3')
             pygame.mixer.music.set_volume(0.3)  # Volume à 30% pour ne pas couvrir les autres sons
             pygame.mixer.music.play(-1)  # -1 = boucle infinie
+            logger.debug("Musique de fond lancée en boucle")
         except Exception as e:
-            print(f"Impossible de charger la musique de fond: {e}")
+            logger.error(f"Impossible de charger la musique de fond: {e}")
         
         return sounds
     
@@ -989,6 +996,7 @@ class Game:
         self.current_player = 2 if self.current_player == 1 else 1
         if self.current_player == 1:
             self.turn_number += 1
+            logger.info(f"Tour {self.turn_number} - Joueur {self.current_player}")
         
         # Réduire l'immobilisation des dinosaures du NOUVEAU joueur actuel
         # (ceux qui vont jouer maintenant)
@@ -1193,6 +1201,7 @@ class Game:
             if egg.health <= 0:
                 self.game_over = True
                 self.winner = 2 if player == 1 else 1
+                logger.info(f"Partie terminée - Victoire du Joueur {self.winner} au tour {self.turn_number}")
                 break
     
     def update(self):
@@ -1297,7 +1306,7 @@ class Game:
                 return
                 
             if not getattr(self, 'ai', None):
-                print("IA non initialisée, fin du tour")
+                logger.warning("IA non initialisée, fin du tour")
                 self.end_turn()
                 self.ai_thinking = False
                 return
@@ -1314,7 +1323,7 @@ class Game:
             else:
                 self.end_turn()
         except Exception as e:
-            print(f"Erreur IA: {e}")
+            logger.error(f"Erreur IA: {e}")
             import traceback
             traceback.print_exc()
             self.end_turn()
